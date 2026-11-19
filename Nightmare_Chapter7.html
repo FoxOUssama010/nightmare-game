@@ -1,0 +1,901 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>NIGHTMARE: THE FORGOTTEN HOUSE</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;user-select:none;-webkit-user-select:none}
+:root{--bg-dark:#07090d;--panel-bg:rgba(11,15,22,.94);--border-color:rgba(130,155,180,.25);--accent-cold:#6da5c0;--accent-blood:#9e1b1b;--text-main:#d8e1e8;--text-muted:#7f91a1}
+body,html{width:100%;height:100%;height:100dvh;background:#000;color:var(--text-main);font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;overflow:hidden;touch-action:none;overscroll-behavior:none}
+#game-wrapper{position:fixed;inset:0;width:100%;height:100%;height:100dvh;overflow:hidden;background:var(--bg-dark)}
+canvas#gameCanvas{display:block;width:100%;height:100%;pointer-events:none}
+#vignette{position:absolute;inset:0;pointer-events:none;background:radial-gradient(circle,rgba(0,0,0,0) 52%,rgba(0,0,0,.82) 100%);z-index:5}
+#glitch-overlay{position:absolute;inset:0;pointer-events:none;opacity:0;background:repeating-linear-gradient(0deg,rgba(255,0,0,.08) 0,rgba(0,255,255,.08) 2px,transparent 4px);z-index:6;transition:opacity .15s}
+.hidden{display:none!important}
+#hud{position:absolute;top:max(10px,env(safe-area-inset-top));left:max(14px,env(safe-area-inset-left));right:max(14px,env(safe-area-inset-right));display:flex;justify-content:space-between;align-items:flex-start;z-index:15;pointer-events:none}
+.hud-left,.hud-right,.hud-center{pointer-events:auto}
+.hud-left{display:flex;flex-direction:column;gap:6px;background:rgba(8,11,16,.72);padding:10px 14px;border:1px solid var(--border-color);border-radius:4px}
+.stat-group{display:flex;align-items:center;gap:10px}
+.stat-label{font-size:12px;width:65px;color:var(--text-muted)}
+.bar-bg{width:130px;height:8px;background:rgba(255,255,255,.08);border-radius:2px;overflow:hidden}
+.bar-fill{height:100%;width:100%;transition:width .2s ease}
+.bar-fill.health{background:linear-gradient(90deg,#6e1414,#c92a2a)}
+.bar-fill.stamina{background:linear-gradient(90deg,#2b5876,#4e89ae)}
+.bar-fill.battery{background:linear-gradient(90deg,#8a6d1b,#e0b12b)}
+.hud-center{text-align:center;max-width:420px}
+#chapter-banner{font-size:13px;letter-spacing:2px;color:var(--accent-cold);text-transform:uppercase;text-shadow:0 2px 8px #000}
+#objective-box{margin-top:4px;font-size:14px;background:rgba(8,11,16,.78);padding:6px 14px;border-bottom:1px solid var(--accent-cold)}
+.hud-right{display:flex;align-items:center;gap:10px}
+.quick-items{display:flex;gap:12px;background:rgba(8,11,16,.75);padding:8px 12px;border:1px solid var(--border-color);font-size:13px}
+.hud-btn{background:rgba(15,22,32,.85);color:var(--text-main);border:1px solid var(--border-color);padding:8px 12px;cursor:pointer;font-size:13px}
+.hud-btn:hover{border-color:var(--accent-cold)}
+#interact-prompt{position:absolute;bottom:28%;left:50%;transform:translateX(-50%);background:rgba(10,14,20,.9);border:1px solid var(--accent-cold);padding:8px 18px;font-size:14px;z-index:16;box-shadow:0 0 15px rgba(0,0,0,.8);white-space:nowrap}
+#subtitle-box{position:absolute;bottom:145px;left:50%;transform:translateX(-50%);max-width:720px;width:90%;text-align:center;background:rgba(5,7,10,.85);border-top:1px solid rgba(255,255,255,.12);border-bottom:1px solid rgba(255,255,255,.12);padding:12px 20px;font-size:16px;line-height:1.6;color:#e6eef5;z-index:18}
+.screen-overlay{position:absolute;inset:0;background:rgba(4,6,9,.88);-webkit-backdrop-filter:blur(5px);backdrop-filter:blur(5px);display:flex;align-items:center;justify-content:center;z-index:30;padding:20px;touch-action:manipulation;pointer-events:auto}
+#main-menu{background:radial-gradient(circle at 30% 40%,#131c26 0,#05070a 75%)}
+.menu-content{text-align:center;max-width:540px;width:100%;z-index:4;pointer-events:auto;position:relative}
+.studio-tag{font-size:11px;letter-spacing:4px;color:var(--accent-cold);margin-bottom:12px}
+.game-title{font-size:clamp(32px,6vw,56px);font-weight:800;letter-spacing:3px;line-height:1.1;color:#eef4f8;text-shadow:0 0 25px rgba(109,165,192,.35)}
+.game-title span{display:block;font-size:clamp(16px,2.8vw,24px);color:#9e1b1b;letter-spacing:6px;margin-top:8px}
+.game-tagline{margin:16px 0 28px;color:var(--text-muted);font-style:italic}
+.menu-buttons{display:flex;flex-direction:column;gap:12px;max-width:320px;margin:0 auto}
+.menu-btn{background:rgba(16,22,30,.9);color:var(--text-main);border:1px solid var(--border-color);padding:13px 20px;font-size:15px;letter-spacing:1px;cursor:pointer;transition:all .2s;pointer-events:auto;position:relative;z-index:5;-webkit-tap-highlight-color:rgba(109,165,192,.3)}
+.menu-btn:hover,.menu-btn:active{background:rgba(32,46,62,.95);border-color:var(--accent-cold);transform:translateY(-1px)}
+.menu-btn.primary{border-color:var(--accent-blood);background:linear-gradient(90deg,rgba(90,16,16,.7),rgba(25,14,18,.9))}
+.menu-btn.primary:hover{background:linear-gradient(90deg,rgba(135,22,22,.85),rgba(40,18,22,.95))}
+.menu-btn:disabled{opacity:.4;cursor:not-allowed}
+.lang-switch{margin-top:24px;display:flex;justify-content:center;gap:10px}
+.lang-btn{background:transparent;border:1px solid var(--border-color);color:var(--text-muted);padding:6px 14px;cursor:pointer}
+.lang-btn.active{border-color:var(--accent-cold);color:#fff}
+.panel{background:var(--panel-bg);border:1px solid var(--border-color);padding:26px;max-width:560px;width:100%;max-height:90vh;overflow-y:auto;display:flex;flex-direction:column;gap:16px;box-shadow:0 20px 60px rgba(0,0,0,.9)}
+.panel.wide{max-width:860px}
+.panel.danger{border-color:var(--accent-blood);text-align:center}
+.blood-text{color:#d62828;font-size:28px}
+.chapters-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+.chapter-card{border:1px solid var(--border-color);padding:14px;background:rgba(15,20,28,.8);cursor:pointer;text-align:start}
+.chapter-card:hover:not(.locked){border-color:var(--accent-cold)}
+.chapter-card.locked{opacity:.45;cursor:not-allowed}
+.setting-row{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.06)}
+.setting-row select,.setting-row input[type=range]{background:#0d131a;color:#fff;border:1px solid var(--border-color);padding:6px}
+.keybinds-box h3{font-size:14px;margin-bottom:8px;color:var(--accent-cold)}
+#keybinds-list{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.keybind-item{display:flex;justify-content:space-between;background:rgba(255,255,255,.04);padding:6px 10px;font-size:13px}
+.keybind-btn{background:#18222f;color:#fff;border:1px solid var(--accent-cold);padding:2px 8px;cursor:pointer}
+.inv-columns{display:grid;grid-template-columns:1fr 1.3fr;gap:18px}
+.inv-grid{display:flex;flex-direction:column;gap:8px}
+.inv-item{border:1px solid var(--border-color);padding:10px;background:rgba(255,255,255,.03);display:flex;justify-content:space-between;align-items:center}
+.notes-list{display:flex;flex-direction:column;gap:6px;max-height:150px;overflow-y:auto}
+.note-btn{text-align:start;background:rgba(255,255,255,.05);border:1px solid var(--border-color);color:var(--text-main);padding:8px;cursor:pointer}
+.note-reader{margin-top:10px;padding:12px;background:#080b10;border:1px solid var(--border-color);min-height:120px;font-size:14px;line-height:1.6;white-space:pre-line}
+#puzzle-body{display:flex;flex-direction:column;gap:12px;align-items:center;padding:10px 0}
+.keypad-display{font-family:monospace;font-size:26px;letter-spacing:6px;background:#05080c;border:1px solid var(--accent-cold);padding:10px 24px}
+.keypad-grid{display:grid;grid-template-columns:repeat(3,64px);gap:8px}
+.pad-btn{height:48px;background:#141c26;color:#fff;border:1px solid var(--border-color);font-size:18px;cursor:pointer}
+.wire-row{display:flex;align-items:center;justify-content:space-between;width:100%;max-width:360px;padding:8px;border:1px solid var(--border-color)}
+
+#mobile-controls{
+  position:absolute;
+  bottom:max(18px,env(safe-area-inset-bottom));
+  left:max(16px,env(safe-area-inset-left));
+  right:max(16px,env(safe-area-inset-right));
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-end;
+  direction:ltr;
+  z-index:20;
+  pointer-events:none;
+}
+.touch-cluster{display:flex;flex-direction:column;gap:10px;pointer-events:auto}
+.touch-cluster.left{align-items:flex-start}
+.touch-cluster.right{align-items:flex-end}
+.touch-row{display:flex;gap:12px;align-items:center}
+.touch-btn{
+  width:56px;height:56px;border-radius:50%;
+  background:rgba(15,22,32,.58);border:1.5px solid rgba(180,210,235,.4);
+  color:#fff;font-size:19px;display:flex;align-items:center;justify-content:center;
+  -webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);touch-action:none;
+  box-shadow:0 4px 12px rgba(0,0,0,.5);
+}
+.touch-btn.small{width:44px;height:44px;font-size:15px}
+.touch-btn.pill{width:auto;min-width:62px;height:40px;border-radius:20px;padding:0 14px;font-size:12px;font-weight:600}
+.touch-btn.action{width:64px;height:64px;font-size:20px;font-weight:700;border-color:var(--accent-cold);background:rgba(45,95,130,.62)}
+.touch-btn:active,.touch-btn.active{background:rgba(109,165,192,.72);border-color:#fff;transform:scale(.95)}
+
+@media screen and (orientation:landscape) and (max-width:1024px){
+ #hud{font-size:12px}.hud-left{padding:8px 10px;gap:4px}.stat-label{width:54px;font-size:10px}.bar-bg{width:96px;height:7px}
+ .quick-items{gap:8px;padding:6px 8px;font-size:11px}.hud-btn{padding:6px 9px;font-size:11px}
+ #chapter-banner{font-size:11px}#objective-box{font-size:12px;padding:4px 10px}
+ .touch-btn{width:54px;height:54px;font-size:18px}.touch-btn.small{width:42px;height:42px;font-size:14px}.touch-btn.action{width:62px;height:62px;font-size:19px}
+ #subtitle-box{bottom:135px;font-size:14px;padding:8px 14px}#interact-prompt{bottom:36%;font-size:13px}
+}
+@media screen and (orientation:landscape) and (max-height:430px){
+ .hud-left{padding:6px 8px}.stat-label{width:46px;font-size:9px}.bar-bg{width:78px}.quick-items{display:none}
+ .touch-cluster{gap:7px}.touch-row{gap:8px}
+ .touch-btn{width:46px;height:46px;font-size:16px}.touch-btn.small{width:38px;height:38px}.touch-btn.pill{height:34px;min-width:52px;font-size:11px}.touch-btn.action{width:54px;height:54px}
+ #subtitle-box{bottom:110px;font-size:13px}
+}
+@media screen and (orientation:portrait) and (max-width:768px){
+ #hud{flex-wrap:wrap;gap:6px}
+ .hud-left{padding:6px 8px;gap:4px}
+ .stat-label{width:42px;font-size:10px}
+ .bar-bg{width:68px;height:6px}
+ .hud-right{gap:6px}
+ .quick-items{gap:6px;padding:6px 8px;font-size:11px}
+ .hud-btn{padding:6px 8px;font-size:11px}
+ .hud-center{order:3;width:100%;max-width:100%}
+ #chapter-banner{font-size:11px}
+ #objective-box{font-size:12px;padding:4px 10px}
+ .touch-cluster{gap:10px}
+ .touch-row{gap:10px}
+ .touch-btn{width:54px;height:54px;font-size:18px}
+ .touch-btn.small{width:42px;height:42px;font-size:14px}
+ .touch-btn.pill{min-width:58px;height:38px;font-size:11px}
+ .touch-btn.action{width:60px;height:60px;font-size:19px}
+ #subtitle-box{bottom:150px;font-size:13px;padding:8px 12px}
+ #interact-prompt{bottom:27%;font-size:12px;padding:6px 12px}
+}
+@media screen and (min-width:1025px){
+ #hud{font-size:14px}.hud-btn{padding:9px 14px;font-size:14px}.bar-bg{width:150px}
+ .panel{max-width:min(620px,92vw);max-height:calc(100dvh - 40px)}.panel.wide{max-width:min(960px,94vw)}
+}
+@media screen and (max-width:768px){
+ .panel{padding:18px;max-width:94vw;max-height:calc(100dvh - 28px)}.panel.wide{max-width:96vw}
+ .inv-columns{grid-template-columns:1fr}.keypad-grid{grid-template-columns:repeat(3,minmax(54px,68px))}
+ .keypad-display{font-size:20px;letter-spacing:4px}
+}
+</style>
+</head>
+<body>
+<div id="game-wrapper">
+<canvas id="gameCanvas"></canvas>
+<div id="vignette"></div>
+<div id="glitch-overlay"></div>
+
+<div id="hud" class="hidden">
+ <div class="hud-left">
+  <div class="stat-group"><span class="stat-label" data-i18n="hud_health">الصحة</span><div class="bar-bg"><div id="health-bar" class="bar-fill health"></div></div></div>
+  <div class="stat-group"><span class="stat-label" data-i18n="hud_stamina">اللياقة</span><div class="bar-bg"><div id="stamina-bar" class="bar-fill stamina"></div></div></div>
+  <div class="stat-group"><span class="stat-label" data-i18n="hud_battery">البطارية</span><div class="bar-bg"><div id="battery-bar" class="bar-fill battery"></div></div></div>
+ </div>
+ <div class="hud-center">
+  <div id="chapter-banner"></div>
+  <div id="objective-box"></div>
+ </div>
+ <div class="hud-right">
+  <div class="quick-items">
+   <span id="hud-clues">📄 0/7</span>
+   <span id="hud-medkits">➕ 0</span>
+   <span id="hud-batteries">🔋 0</span>
+  </div>
+  <button id="btn-inventory" class="hud-btn" data-i18n="btn_inventory">الحقيبة [I]</button>
+  <button id="btn-pause" class="hud-btn">❚❚</button>
+ </div>
+</div>
+
+<div id="interact-prompt" class="hidden"></div>
+<div id="subtitle-box" class="hidden"></div>
+
+<div id="mobile-controls" class="hidden">
+ <div class="touch-cluster left">
+  <div class="touch-row">
+   <button id="touch-crouch" class="touch-btn pill" data-i18n="ctrl_crouch">انحناء</button>
+  </div>
+  <div class="touch-row">
+   <button id="touch-left" class="touch-btn" aria-label="Left">◀</button>
+   <button id="touch-right" class="touch-btn" aria-label="Right">▶</button>
+  </div>
+ </div>
+ <div class="touch-cluster right">
+  <div class="touch-row">
+   <button id="touch-flashlight" class="touch-btn small" aria-label="Flashlight">🔦</button>
+   <button id="touch-heal" class="touch-btn small" aria-label="Heal">➕</button>
+   <button id="touch-sprint" class="touch-btn pill" data-i18n="ctrl_sprint">جري</button>
+  </div>
+  <div class="touch-row">
+   <button id="touch-jump" class="touch-btn" aria-label="Jump">▲</button>
+   <button id="touch-interact" class="touch-btn action" aria-label="Interact">E</button>
+  </div>
+ </div>
+</div>
+
+<div id="main-menu" class="screen-overlay">
+ <div class="menu-bg-art"></div>
+ <div class="menu-content">
+  <div class="studio-tag">AAA SURVIVAL HORROR EXPERIENCE</div>
+  <h1 class="game-title">NIGHTMARE<br><span>THE FORGOTTEN HOUSE</span></h1>
+  <p class="game-tagline" data-i18n="tagline">الظلام يتذكر ما نسيته...</p>
+  <div class="menu-buttons">
+   <button id="btn-new-game" class="menu-btn primary" data-i18n="menu_new">لعبة جديدة (NEW GAME)</button>
+   <button id="btn-continue" class="menu-btn" data-i18n="menu_continue">متابعة (CONTINUE)</button>
+   <button id="btn-chapters" class="menu-btn" data-i18n="menu_chapters">الفصول (CHAPTERS)</button>
+   <button id="btn-settings" class="menu-btn" data-i18n="menu_settings">الإعدادات (SETTINGS)</button>
+  </div>
+  <div class="lang-switch">
+   <button id="lang-ar" class="lang-btn active">العربية</button>
+   <button id="lang-en" class="lang-btn">ENGLISH</button>
+  </div>
+ </div>
+</div>
+
+<div id="chapters-menu" class="screen-overlay hidden">
+ <div class="panel">
+  <h2 data-i18n="menu_chapters">اختيار الفصل</h2>
+  <div id="chapters-list" class="chapters-grid"></div>
+  <button class="menu-btn back-btn" data-close="chapters-menu" data-i18n="btn_back">رجوع</button>
+ </div>
+</div>
+
+<div id="settings-menu" class="screen-overlay hidden">
+ <div class="panel">
+  <h2 data-i18n="menu_settings">الإعدادات</h2>
+  <div class="setting-row"><label data-i18n="set_music">مستوى الموسيقى</label><input type="range" id="opt-music" min="0" max="100" value="65"></div>
+  <div class="setting-row"><label data-i18n="set_sfx">المؤثرات الصوتية</label><input type="range" id="opt-sfx" min="0" max="100" value="80"></div>
+  <div class="setting-row"><label data-i18n="set_touch">أزرار اللمس على الشاشة</label>
+   <select id="opt-touch"><option value="auto" data-i18n="opt_auto">تلقائي</option><option value="on" data-i18n="opt_on">مفعّل دائماً</option><option value="off" data-i18n="opt_off">معطّل</option></select></div>
+  <div class="setting-row"><label data-i18n="set_quality">جودة الإضاءة والضباب</label>
+   <select id="opt-quality"><option value="high" data-i18n="opt_high">عالية (سينمائية)</option><option value="low" data-i18n="opt_low">متوسطة (للأجهزة الضعيفة)</option></select></div>
+  <div class="keybinds-box"><h3 data-i18n="set_controls">تخصيص أزرار التحكم (اضغط لتغيير الزر)</h3><div id="keybinds-list"></div></div>
+  <button class="menu-btn back-btn" data-close="settings-menu" data-i18n="btn_back">رجوع</button>
+ </div>
+</div>
+
+<div id="inventory-modal" class="screen-overlay hidden">
+ <div class="panel wide">
+  <h2 data-i18n="inv_title">الحقيبة والأدلة</h2>
+  <div class="inv-columns">
+   <div class="inv-col"><h3 data-i18n="inv_items">الأدوات والموارد</h3><div id="inv-items-list" class="inv-grid"></div></div>
+   <div class="inv-col"><h3 data-i18n="inv_notes">الوثائق والتسجيلات</h3><div id="inv-notes-list" class="notes-list"></div><div id="note-reader" class="note-reader"></div></div>
+  </div>
+  <button id="btn-close-inv" class="menu-btn" data-i18n="btn_close">إغلاق</button>
+ </div>
+</div>
+
+<div id="puzzle-modal" class="screen-overlay hidden">
+ <div class="panel">
+  <h2 id="puzzle-title">لغز</h2>
+  <p id="puzzle-desc"></p>
+  <div id="puzzle-body"></div>
+  <div id="puzzle-feedback"></div>
+  <button id="btn-close-puzzle" class="menu-btn" data-i18n="btn_cancel">إلغاء</button>
+ </div>
+</div>
+
+<div id="pause-menu" class="screen-overlay hidden">
+ <div class="panel">
+  <h2 data-i18n="pause_title">إيقاف مؤقت</h2>
+  <button id="btn-resume" class="menu-btn primary" data-i18n="pause_resume">استئناف اللعب</button>
+  <button id="btn-restart-cp" class="menu-btn" data-i18n="pause_checkpoint">إعادة من آخر نقطة حفظ</button>
+  <button id="btn-pause-settings" class="menu-btn" data-i18n="menu_settings">الإعدادات</button>
+  <button id="btn-quit-menu" class="menu-btn" data-i18n="pause_quit">القائمة الرئيسية</button>
+ </div>
+</div>
+
+<div id="death-screen" class="screen-overlay hidden">
+ <div class="panel danger">
+  <h2 class="blood-text" data-i18n="death_title">لقد سقطت في الظلام</h2>
+  <p id="death-reason" data-i18n="death_desc">المخلوق وجدك...</p>
+  <button id="btn-retry" class="menu-btn primary" data-i18n="death_retry">العودة إلى نقطة الحفظ</button>
+  <button id="btn-death-menu" class="menu-btn" data-i18n="pause_quit">القائمة الرئيسية</button>
+ </div>
+</div>
+
+<div id="chapter-complete-screen" class="screen-overlay hidden">
+ <div class="panel">
+  <h2 data-i18n="chap_done">اكتمل الفصل</h2>
+  <p id="chap-summary"></p>
+  <button id="btn-next-chapter" class="menu-btn primary" data-i18n="chap_next">الفصل التالي</button>
+ </div>
+</div>
+
+<div id="ending-screen" class="screen-overlay hidden">
+ <div class="panel ending-panel">
+  <div id="ending-badge" class="studio-tag">ENDING</div>
+  <h2 id="ending-title"></h2>
+  <p id="ending-text"></p>
+  <div id="ending-stats"></div>
+  <button id="btn-ending-menu" class="menu-btn primary" data-i18n="pause_quit">العودة للقائمة الرئيسية</button>
+ </div>
+</div>
+</div>
+
+<script>
+const ProceduralAssets=(()=>{const cache={};
+function createNoiseTexture(key,w,h,baseRgb,grainAlpha=.08){if(cache[key])return cache[key];const c=document.createElement('canvas');c.width=w;c.height=h;const ctx=c.getContext('2d');ctx.fillStyle=`rgb(${baseRgb[0]},${baseRgb[1]},${baseRgb[2]})`;ctx.fillRect(0,0,w,h);const img=ctx.getImageData(0,0,w,h),data=img.data;for(let i=0;i<data.length;i+=4){const n=(Math.random()-.5)*255*grainAlpha;data[i]=Math.max(0,Math.min(255,data[i]+n));data[i+1]=Math.max(0,Math.min(255,data[i+1]+n));data[i+2]=Math.max(0,Math.min(255,data[i+2]+n))}ctx.putImageData(img,0,0);ctx.strokeStyle='rgba(0,0,0,.18)';for(let i=0;i<18;i++){ctx.beginPath();const x=Math.random()*w;ctx.moveTo(x,0);ctx.lineTo(x+(Math.random()-.5)*16,h);ctx.stroke()}cache[key]=c;return c}
+function getWallPattern(ctx,theme){const palettes={house:[26,32,42],basement:[20,25,30],hospital:[30,40,42],lab:[22,32,42],underground:[18,21,26],finale:[28,20,25]};const rgb=palettes[theme]||palettes.house;const tex=createNoiseTexture('wall_'+theme,128,128,rgb,.09);return ctx.createPattern(tex,'repeat')}
+return{getWallPattern}})();
+
+const AudioEngine=(()=>{let ctx=null,masterGain,musicGain,sfxGain,musicVol=.65,sfxVol=.8,droneOsc1=null,droneOsc2=null,droneFilter=null,tensionLevel=0,rainNode=null,breathTimer=0;
+function init(){
+  try{
+    if(ctx){if(ctx.state==='suspended')ctx.resume();return}
+    const AudioCtx=window.AudioContext||window.webkitAudioContext;
+    if(!AudioCtx)return;
+    ctx=new AudioCtx();
+    masterGain=ctx.createGain();masterGain.gain.value=.9;masterGain.connect(ctx.destination);
+    musicGain=ctx.createGain();musicGain.gain.value=musicVol;musicGain.connect(masterGain);
+    sfxGain=ctx.createGain();sfxGain.gain.value=sfxVol;sfxGain.connect(masterGain);
+    startAmbientDrone();startRainAmbience();
+    if(ctx.state==='suspended')ctx.resume();
+  }catch(e){console.warn('AudioEngine.init failed',e);ctx=null}
+}
+function setVolumes(m,s){musicVol=m/100;sfxVol=s/100;if(!ctx)return;try{if(musicGain)musicGain.gain.setTargetAtTime(musicVol,ctx.currentTime,.1);if(sfxGain)sfxGain.gain.setTargetAtTime(sfxVol,ctx.currentTime,.1)}catch(e){}}
+function startAmbientDrone(){if(!ctx||droneOsc1)return;droneOsc1=ctx.createOscillator();droneOsc2=ctx.createOscillator();droneFilter=ctx.createBiquadFilter();droneOsc1.type='sawtooth';droneOsc2.type='triangle';droneOsc1.frequency.value=42;droneOsc2.frequency.value=44.5;droneFilter.type='lowpass';droneFilter.frequency.value=110;const droneAmp=ctx.createGain();droneAmp.gain.value=.22;droneOsc1.connect(droneFilter);droneOsc2.connect(droneFilter);droneFilter.connect(droneAmp);droneAmp.connect(musicGain);droneOsc1.start();droneOsc2.start()}
+function startRainAmbience(){if(!ctx||rainNode)return;const bufferSize=ctx.sampleRate*2,buffer=ctx.createBuffer(1,bufferSize,ctx.sampleRate),data=buffer.getChannelData(0);for(let i=0;i<bufferSize;i++)data[i]=Math.random()*2-1;rainNode=ctx.createBufferSource();rainNode.buffer=buffer;rainNode.loop=true;const filter=ctx.createBiquadFilter();filter.type='bandpass';filter.frequency.value=950;filter.Q.value=.6;const gain=ctx.createGain();gain.gain.value=.04;rainNode.connect(filter);filter.connect(gain);gain.connect(sfxGain);rainNode.start()}
+function setTension(level){if(!ctx||!droneFilter)return;tensionLevel=level;const now=ctx.currentTime;if(level===0){droneFilter.frequency.setTargetAtTime(105,now,.5);droneOsc1.frequency.setTargetAtTime(42,now,.5)}else if(level===1){droneFilter.frequency.setTargetAtTime(240,now,.3);droneOsc1.frequency.setTargetAtTime(55,now,.3)}else{droneFilter.frequency.setTargetAtTime(580,now,.15);droneOsc1.frequency.setTargetAtTime(73.4,now,.15)}}
+function playFootstep(isSprint=false,isCrouch=false){if(!ctx)return;const now=ctx.currentTime,osc=ctx.createOscillator(),gain=ctx.createGain();osc.type='triangle';osc.frequency.setValueAtTime(isSprint?115:85,now);osc.frequency.exponentialRampToValueAtTime(28,now+.09);const vol=isCrouch?.04:isSprint?.22:.11;gain.gain.setValueAtTime(vol,now);gain.gain.exponentialRampToValueAtTime(.001,now+.1);osc.connect(gain);gain.connect(sfxGain);osc.start(now);osc.stop(now+.11)}
+function playHeartbeat(intensity=1){if(!ctx)return;const now=ctx.currentTime;[0,.16].forEach((offset,idx)=>{const osc=ctx.createOscillator(),gain=ctx.createGain();osc.type='sine';osc.frequency.setValueAtTime(idx===0?58:48,now+offset);osc.frequency.exponentialRampToValueAtTime(24,now+offset+.12);gain.gain.setValueAtTime(.25*intensity,now+offset);gain.gain.exponentialRampToValueAtTime(.001,now+offset+.14);osc.connect(gain);gain.connect(sfxGain);osc.start(now+offset);osc.stop(now+offset+.15)})}
+function playDoorCreak(){if(!ctx)return;const now=ctx.currentTime,osc=ctx.createOscillator(),gain=ctx.createGain();osc.type='sawtooth';osc.frequency.setValueAtTime(190,now);osc.frequency.linearRampToValueAtTime(135,now+.25);osc.frequency.linearRampToValueAtTime(220,now+.55);gain.gain.setValueAtTime(.08,now);gain.gain.exponentialRampToValueAtTime(.001,now+.6);osc.connect(gain);gain.connect(sfxGain);osc.start(now);osc.stop(now+.62)}
+function playMonsterScreech(type='SILENT'){if(!ctx)return;const now=ctx.currentTime,osc=ctx.createOscillator(),gain=ctx.createGain();osc.type=type==='EXPERIMENT'?'sawtooth':'square';const startFreq=type==='BLIND'?620:type==='EXPERIMENT'?140:340,endFreq=type==='BLIND'?290:type==='EXPERIMENT'?52:110;osc.frequency.setValueAtTime(startFreq,now);osc.frequency.exponentialRampToValueAtTime(endFreq,now+.55);gain.gain.setValueAtTime(.24,now);gain.gain.exponentialRampToValueAtTime(.001,now+.6);osc.connect(gain);gain.connect(sfxGain);osc.start(now);osc.stop(now+.62)}
+function playClick(){if(!ctx)return;const now=ctx.currentTime,osc=ctx.createOscillator(),gain=ctx.createGain();osc.type='sine';osc.frequency.setValueAtTime(750,now);gain.gain.setValueAtTime(.09,now);gain.gain.exponentialRampToValueAtTime(.001,now+.04);osc.connect(gain);gain.connect(sfxGain);osc.start(now);osc.stop(now+.05)}
+function updateBreathing(dt,stamina,inChase){if(!ctx)return;if(stamina<45||inChase){breathTimer-=dt;if(breathTimer<=0){breathTimer=inChase?.65:1.1;playHeartbeat(inChase?1:.55)}}}
+return{init,setVolumes,setTension,playFootstep,playHeartbeat,playDoorCreak,playMonsterScreech,playClick,updateBreathing}})();
+
+const SaveSystem=(()=>{const SAVE_KEY='nightmare_forgotten_house_save_v1',SETTINGS_KEY='nightmare_forgotten_house_settings_v1';
+const defaultSettings={lang:'ar',music:65,sfx:80,touch:'auto',quality:'high',keys:{left:'KeyA',right:'KeyD',jump:'Space',crouch:'KeyS',sprint:'ShiftLeft',interact:'KeyE',flashlight:'KeyF',inventory:'KeyI'}};
+function loadSettings(){try{const raw=localStorage.getItem(SETTINGS_KEY);if(!raw)return JSON.parse(JSON.stringify(defaultSettings));const p=JSON.parse(raw);return{...defaultSettings,...p,keys:{...defaultSettings.keys,...(p.keys||{})}}}catch{return JSON.parse(JSON.stringify(defaultSettings))}}
+function saveSettings(s){try{localStorage.setItem(SETTINGS_KEY,JSON.stringify(s))}catch(e){}}
+function loadGame(){try{const raw=localStorage.getItem(SAVE_KEY);return raw?JSON.parse(raw):null}catch{return null}}
+function saveGame(d){try{localStorage.setItem(SAVE_KEY,JSON.stringify(d))}catch(e){}}
+function clearSave(){try{localStorage.removeItem(SAVE_KEY)}catch(e){}}
+return{loadSettings,saveSettings,loadGame,saveGame,clearSave}})();
+
+const InventorySystem=(()=>{let state={medkits:1,batteries:1,keys:[],notes:[]};
+const NOTES_DB={note_1:{title_ar:'مذكرة ممزقة - المدخل',title_en:'Torn Note - Entrance',text_ar:'24 أكتوبر 1998: إذا كنت تقرأ هذا، لا تصدر صوتاً. الرمز السري لباب القبو هو رقم الجناح الذي بدأ فيه المشروع: 1904.',text_en:'Oct 24, 1998: If you are reading this, make no sound. The basement keypad code is the ward number where the project began: 1904.'},note_2:{title_ar:'تقرير المريض #07',title_en:'Patient #07 Report',text_ar:'فقدت العينة #07 بصرها بالكامل بعد الحقنة الرابعة، لكن حاسة السمع تضاعفت عشر مرات. أي خطوة سريعة ستجذبها فوراً.',text_en:'Subject #07 lost all sight after the fourth injection, yet hearing amplified tenfold. Any fast footstep will draw it immediately.'},note_3:{title_ar:'سجل أطباء المستشفى',title_en:'Hospital Doctor Log',text_ar:'المخلوقات التي تخرج من الظلال تخاف من الضوء المركّز. وجّه المصباح نحوها لتبديدها مؤقتاً.',text_en:'The entities emerging from shadows fear focused light. Aim your flashlight at them to temporarily banish them.'},note_4:{title_ar:'ملف مشروع أوميغا السري',title_en:'Classified Project Omega File',text_ar:'المتطوع رقم 01 لم يكن ضحية عادية... لقد كان كبير الباحثين الذي حاول إغلاق المنشأة قبل أن يفقد ذاكرته.',text_en:'Volunteer #01 was no ordinary victim... He was the Lead Researcher who tried to shut down the facility before losing his memory.'},note_5:{title_ar:'بروتوكول التدمير الذاتي',title_en:'Self-Destruct Protocol',text_ar:'رمز إيقاف المفاعل الرئيسي في المختبر السري: 7392. تفعيل هذا البروتوكول يكشف الحقيقة للعالم.',text_en:'Main reactor override code in the Secret Lab: 7392. Activating this protocol exposes the truth to the world.'},note_6:{title_ar:'شريط صوتي: الهمس الأخير',title_en:'Audio Tape: Final Whisper',text_ar:'أنت لست غريباً عن هذا المنزل... لقد بنيته بيديك. اهرب أو أنهِ ما بدأته.',text_en:'You are no stranger to this house... You built it with your own hands. Escape or finish what you started.'},note_7:{title_ar:'شريط صوتي: رسالة من الماضي',title_en:'Audio Tape: Message from the Past',text_ar:'إذا وصلت إلى هنا... فأنت لست الضحية. أنت الذي صمم الكابوس. رمز التدمير النهائي ليس في المختبر... بل في ذاكرتك. اختر: امسح كل شيء، أو أكمل ما بدأته.',text_en:'If you reached this point... you are not the victim. You designed the nightmare. The final destruction code is not in the lab... it is in your memory. Choose: erase everything, or finish what you started.'}};
+function reset(){state={medkits:1,batteries:1,keys:[],notes:[]}}
+function load(saved){if(!saved)return reset();state={medkits:saved.medkits??1,batteries:saved.batteries??1,keys:[...(saved.keys||[])],notes:[...(saved.notes||[])]}}
+function exportState(){return JSON.parse(JSON.stringify(state))}
+function addItem(type,id){if(type==='medkit')state.medkits++;else if(type==='battery')state.batteries++;else if(type==='key'&&!state.keys.includes(id))state.keys.push(id);else if(type==='note'&&!state.notes.includes(id))state.notes.push(id)}
+function hasKey(id){return state.keys.includes(id)}
+function useMedkit(player){if(state.medkits>0&&player.health<100){state.medkits--;player.health=Math.min(100,player.health+45);return true}return false}
+function useBattery(player){if(state.batteries>0&&player.battery<100){state.batteries--;player.battery=Math.min(100,player.battery+65);return true}return false}
+function getNotesData(lang){return state.notes.map(id=>{const n=NOTES_DB[id];return{id,title:lang==='ar'?n.title_ar:n.title_en,text:lang==='ar'?n.text_ar:n.text_en}})}
+return{reset,load,exportState,addItem,hasKey,useMedkit,useBattery,getNotesData,getState:()=>state}})();
+
+const PuzzleSystem=(()=>{let activePuzzle=null,onSolveCallback=null;
+function open(puzzle,lang,onSolve){activePuzzle=puzzle;onSolveCallback=onSolve;const modal=document.getElementById('puzzle-modal'),title=document.getElementById('puzzle-title'),desc=document.getElementById('puzzle-desc'),body=document.getElementById('puzzle-body'),feedback=document.getElementById('puzzle-feedback');feedback.textContent='';body.innerHTML='';title.textContent=lang==='ar'?puzzle.title_ar:puzzle.title_en;desc.textContent=lang==='ar'?puzzle.desc_ar:puzzle.desc_en;if(puzzle.type==='keypad')renderKeypad(puzzle,body,feedback,lang);else if(puzzle.type==='wires')renderWires(puzzle,body,feedback,lang);else if(puzzle.type==='symbols')renderSymbols(puzzle,body,feedback,lang);modal.classList.remove('hidden')}
+function close(){document.getElementById('puzzle-modal').classList.add('hidden');activePuzzle=null}
+function renderKeypad(puzzle,body,feedback,lang){let entered='';const display=document.createElement('div');display.className='keypad-display';display.textContent='----';body.appendChild(display);const grid=document.createElement('div');grid.className='keypad-grid';['1','2','3','4','5','6','7','8','9','C','0','OK'].forEach(btnLabel=>{const btn=document.createElement('button');btn.className='pad-btn';btn.textContent=btnLabel;btn.onclick=()=>{AudioEngine.playClick();if(btnLabel==='C')entered='';else if(btnLabel==='OK'){if(entered===puzzle.code){feedback.style.color='#4ecdc4';feedback.textContent=lang==='ar'?'تم فتح القفل!':'LOCK OPENED!';setTimeout(()=>{close();if(onSolveCallback)onSolveCallback()},450);return}else{feedback.style.color='#e63946';feedback.textContent=lang==='ar'?'رمز خاطئ!':'INVALID CODE!';entered=''}}else if(entered.length<4)entered+=btnLabel;display.textContent=entered.padEnd(4,'-')};grid.appendChild(btn)});body.appendChild(grid)}
+function renderWires(puzzle,body,feedback,lang){const colors=[{id:'red',ar:'السلك الأحمر (الطاقة)',en:'Red Wire (Power)',color:'#d62828'},{id:'blue',ar:'السلك الأزرق (التحكم)',en:'Blue Wire (Control)',color:'#3a86ff'},{id:'yellow',ar:'السلك الأصفر (الأرضي)',en:'Yellow Wire (Ground)',color:'#ffbe0b'}];const connected={red:false,blue:false,yellow:false};colors.forEach(w=>{const row=document.createElement('div');row.className='wire-row';const label=document.createElement('span');label.style.color=w.color;label.textContent=lang==='ar'?w.ar:w.en;const btn=document.createElement('button');btn.className='menu-btn';btn.textContent=lang==='ar'?'توصيل':'Connect';btn.onclick=()=>{AudioEngine.playClick();connected[w.id]=true;btn.textContent='✔';btn.disabled=true;if(connected.red&&connected.blue&&connected.yellow){feedback.style.color='#4ecdc4';feedback.textContent=lang==='ar'?'تم إصلاح المولد الكهربائي!':'GENERATOR RESTORED!';setTimeout(()=>{close();if(onSolveCallback)onSolveCallback()},450)}};row.appendChild(label);row.appendChild(btn);body.appendChild(row)})}
+function renderSymbols(puzzle,body,feedback,lang){const target=puzzle.target||['☽','👁','🕯'],current=[0,0,0],pool=puzzle.pool||['☽','☀','👁','🕯','🗝','🔥'];const row=document.createElement('div');row.style.display='flex';row.style.gap='14px';for(let i=0;i<3;i++){const btn=document.createElement('button');btn.className='pad-btn';btn.style.width='72px';btn.style.height='72px';btn.style.fontSize='28px';btn.textContent=pool[0];btn.onclick=()=>{AudioEngine.playClick();current[i]=(current[i]+1)%pool.length;btn.textContent=pool[current[i]];if(pool[current[0]]===target[0]&&pool[current[1]]===target[1]&&pool[current[2]]===target[2]){feedback.style.color='#4ecdc4';feedback.textContent=lang==='ar'?'تطابقت الرموز القديمة!':'ANCIENT SYMBOLS ALIGNED!';setTimeout(()=>{close();if(onSolveCallback)onSolveCallback()},450)}};row.appendChild(btn)}body.appendChild(row)}
+return{open,close}})();
+
+const LightingSystem=(()=>{const lightCanvas=document.createElement('canvas'),lCtx=lightCanvas.getContext('2d');let particles=[],fogOffset=0,flickerTimer=0,flickerFactor=1;
+function initParticles(w,h,quality='high'){const count=quality==='high'?55:22;particles=[];for(let i=0;i<count;i++)particles.push({x:Math.random()*w*2,y:Math.random()*h,r:.8+Math.random()*2.2,vx:-8-Math.random()*14,vy:-3+Math.random()*6,alpha:.15+Math.random()*.35})}
+function update(dt,w,h,quality='high'){if(particles.length===0)initParticles(w,h,quality);fogOffset+=dt*18;flickerTimer-=dt;if(flickerTimer<=0){flickerTimer=.08+Math.random()*.35;flickerFactor=Math.random()>.14?1:.45+Math.random()*.3}for(const p of particles){p.x+=p.vx*dt;p.y+=p.vy*dt;if(p.x<0)p.x=w;if(p.y<0)p.y=h;if(p.y>h)p.y=0}}
+function render(ctx,cameraX,w,h,player,envLights,quality){if(lightCanvas.width!==w||lightCanvas.height!==h){lightCanvas.width=w;lightCanvas.height=h}
+ctx.save();for(const p of particles){ctx.fillStyle=`rgba(190,215,235,${p.alpha})`;ctx.beginPath();ctx.arc(p.x%w,p.y,p.r,0,Math.PI*2);ctx.fill()}ctx.restore();
+lCtx.globalCompositeOperation='source-over';
+lCtx.fillStyle=quality==='high'?'rgba(4,7,13,.80)':'rgba(4,7,13,.74)';
+lCtx.fillRect(0,0,w,h);
+lCtx.globalCompositeOperation='destination-out';
+const px=player.x-cameraX+player.w/2,py=player.y+player.h*.42;
+const aura=lCtx.createRadialGradient(px,py,12,px,py,145);
+aura.addColorStop(0,'rgba(0,0,0,.85)');aura.addColorStop(1,'rgba(0,0,0,0)');
+lCtx.fillStyle=aura;lCtx.beginPath();lCtx.arc(px,py,145,0,Math.PI*2);lCtx.fill();
+if(player.flashlightOn&&player.battery>0){const range=380*(.45+.55*(player.battery/100))*flickerFactor,dir=player.facing,spread=.36,angle=dir===1?0:Math.PI;const coneGrad=lCtx.createRadialGradient(px,py,10,px,py,range);coneGrad.addColorStop(0,'rgba(0,0,0,.98)');coneGrad.addColorStop(.68,'rgba(0,0,0,.75)');coneGrad.addColorStop(1,'rgba(0,0,0,0)');lCtx.fillStyle=coneGrad;lCtx.beginPath();lCtx.moveTo(px,py);lCtx.arc(px,py,range,angle-spread,angle+spread);lCtx.closePath();lCtx.fill()}
+for(const light of envLights){const lx=light.x-cameraX;if(lx<-220||lx>w+220)continue;const rad=light.radius*(light.flicker?flickerFactor:1);const g=lCtx.createRadialGradient(lx,light.y,6,lx,light.y,rad);g.addColorStop(0,'rgba(0,0,0,.92)');g.addColorStop(1,'rgba(0,0,0,0)');lCtx.fillStyle=g;lCtx.beginPath();lCtx.arc(lx,light.y,rad,0,Math.PI*2);lCtx.fill()}
+ctx.drawImage(lightCanvas,0,0);
+if(quality==='high'){const fogGrad=ctx.createLinearGradient(0,h-140,0,h);fogGrad.addColorStop(0,'rgba(120,150,175,0)');fogGrad.addColorStop(1,'rgba(110,140,165,.12)');ctx.fillStyle=fogGrad;ctx.fillRect(0,h-140,w,140)}}
+return{update,render}})();
+
+const PlayerController=(()=>{function create(x,y){return{x,y,w:34,h:76,baseH:76,crouchH:44,vx:0,vy:0,facing:1,onGround:false,crouching:false,sprinting:false,hiding:false,flashlightOn:true,health:100,stamina:100,battery:100,noiseLevel:0,stepTimer:0,animTime:0}}
+function update(player,dt,input,level){if(player.hiding){player.vx=0;player.noiseLevel=0;player.stamina=Math.min(100,player.stamina+18*dt);return}
+player.crouching=input.crouch&&player.onGround;const targetH=player.crouching?player.crouchH:player.baseH;if(player.h!==targetH){player.y+=(player.h-targetH);player.h=targetH}
+const moveDir=(input.right?1:0)-(input.left?1:0);if(moveDir!==0)player.facing=moveDir;player.sprinting=input.sprint&&!player.crouching&&moveDir!==0&&player.stamina>5;let speed=165;if(player.crouching)speed=85;else if(player.sprinting)speed=285;player.vx=moveDir*speed;
+if(player.sprinting)player.stamina=Math.max(0,player.stamina-24*dt);else player.stamina=Math.min(100,player.stamina+16*dt);
+if(input.jump&&player.onGround&&!player.crouching){player.vy=-450;player.onGround=false}
+player.vy+=1150*dt;player.x+=player.vx*dt;player.x=Math.max(20,Math.min(level.width-player.w-20,player.x));
+for(const plat of level.platforms){if(rectsOverlap(player,plat)){if(player.vx>0)player.x=plat.x-player.w;else if(player.vx<0)player.x=plat.x+plat.w}}
+player.y+=player.vy*dt;player.onGround=false;for(const plat of level.platforms){if(rectsOverlap(player,plat)){if(player.vy>0){player.y=plat.y-player.h;player.vy=0;player.onGround=true}else if(player.vy<0){player.y=plat.y+plat.h;player.vy=0}}}
+if(player.flashlightOn&&player.battery>0){player.battery=Math.max(0,player.battery-1.45*dt);if(player.battery===0)player.flashlightOn=false}
+if(Math.abs(player.vx)>10&&player.onGround){player.animTime+=dt*(player.sprinting?14:8);player.stepTimer-=dt;player.noiseLevel=player.crouching?35:player.sprinting?340:165;if(player.stepTimer<=0){player.stepTimer=player.sprinting?.28:player.crouching?.62:.44;AudioEngine.playFootstep(player.sprinting,player.crouching)}}else{player.animTime=0;player.noiseLevel=0}}
+function rectsOverlap(a,b){return a.x<b.x+b.w&&a.x+a.w>b.x&&a.y<b.y+b.h&&a.y+a.h>b.y}
+function render(ctx,player,cameraX){
+  if(player.hiding)return;
+  const x=player.x-cameraX,y=player.y,swing=Math.sin(player.animTime)*5.5,bob=Math.abs(Math.sin(player.animTime*0.5))*1.5;
+  const crouch=player.crouching?1:0;
+  ctx.save();
+  // ظل تحت القدمين
+  ctx.fillStyle='rgba(0,0,0,0.28)';
+  ctx.beginPath();ctx.ellipse(x+player.w/2,y+player.h+2,14-crouch*3,4,0,0,Math.PI*2);ctx.fill();
+  // الساقين
+  ctx.fillStyle='#1a222e';
+  ctx.fillRect(x+9,y+player.h-22+bob,8,20-bob*0.3+swing*0.15);
+  ctx.fillRect(x+player.w-17,y+player.h-22-bob*0.3,8,20+bob*0.2-swing*0.15);
+  // الحذاء
+  ctx.fillStyle='#0d1118';
+  ctx.fillRect(x+7,y+player.h-5,12,5);
+  ctx.fillRect(x+player.w-19,y+player.h-5,12,5);
+  // المعطف / الجذع (باحث سابق)
+  ctx.fillStyle='#2a3545';
+  ctx.fillRect(x+6,y+20+crouch*6,player.w-12,player.h-38-crouch*8);
+  // ياقة المعطف
+  ctx.fillStyle='#1e2836';
+  ctx.fillRect(x+8,y+18+crouch*4,player.w-16,8);
+  // حزام
+  ctx.fillStyle='#3d2a1a';
+  ctx.fillRect(x+7,y+48-crouch*4,player.w-14,4);
+  ctx.fillStyle='#c9a227';
+  ctx.fillRect(x+player.w/2-3,y+47-crouch*4,6,6);
+  // الرأس
+  ctx.fillStyle='#d4b89a';
+  ctx.beginPath();ctx.arc(x+player.w/2,y+12+crouch*2,10,0,Math.PI*2);ctx.fill();
+  // شعر / غطاء رأس باحث
+  ctx.fillStyle='#1a1e26';
+  ctx.beginPath();ctx.arc(x+player.w/2,y+9+crouch*2,10.5,Math.PI,0);ctx.fill();
+  ctx.fillRect(x+player.w/2-11,y+8+crouch*2,22,5);
+  // عينان متعبتان
+  ctx.fillStyle='#1a1210';
+  const eyeOff=player.facing===1?2:-2;
+  ctx.fillRect(x+player.w/2-5+eyeOff,y+11+crouch*2,3,2.5);
+  ctx.fillRect(x+player.w/2+2+eyeOff,y+11+crouch*2,3,2.5);
+  // الذراع + المصباح
+  const armX=player.facing===1?x+player.w-7:x-3;
+  ctx.fillStyle='#2a3545';
+  ctx.fillRect(armX,y+26+crouch*3,11,7);
+  if(player.flashlightOn&&player.battery>0){
+    // جسم المصباح
+    ctx.fillStyle='#4a5568';
+    const fx=player.facing===1?armX+10:armX-8;
+    ctx.fillRect(fx,y+25+crouch*3,10,6);
+    // عدسة مضيئة
+    ctx.fillStyle='#fff8d0';
+    ctx.shadowColor='#ffecc0';
+    ctx.shadowBlur=8;
+    ctx.fillRect(player.facing===1?fx+8:fx-2,y+26+crouch*3,4,4);
+    ctx.shadowBlur=0;
+  }
+  // ذراع أخرى متدلية
+  const arm2X=player.facing===1?x+2:x+player.w-8;
+  ctx.fillStyle='#243040';
+  ctx.fillRect(arm2X,y+28+crouch*2+swing*0.3,7,16);
+  ctx.restore();
+}
+return{create,update,render}})();
+
+const MonsterSystem=(()=>{const TYPES={
+  SILENT:{name:'THE SILENT',speedPatrol:75,speedChase:225,sightRange:340,hearRange:180,damage:38,w:42,h:102,color:'#343d4d',rim:'rgba(165,195,225,0.45)'},
+  BLIND:{name:'THE BLIND',speedPatrol:68,speedChase:255,sightRange:0,hearRange:410,damage:45,w:46,h:86,color:'#543030',rim:'rgba(235,120,120,0.45)'},
+  SHADOW:{name:'THE SHADOW',speedPatrol:95,speedChase:240,sightRange:360,hearRange:220,damage:32,w:40,h:92,color:'#1e2536',rim:'rgba(120,160,255,0.5)'},
+  EXPERIMENT:{name:'THE EXPERIMENT',speedPatrol:105,speedChase:295,sightRange:420,hearRange:350,damage:60,w:62,h:116,color:'#5e2228',rim:'rgba(255,95,95,0.55)'}
+};
+function create(type,x,y,minX,maxX){const cfg=TYPES[type]||TYPES.SILENT;return{type,...cfg,x,y,minX,maxX,dir:1,state:'PATROL',targetX:x,stateTimer:0,attackCooldown:0,banishTimer:0,anim:0}}
+function updateAll(monsters,dt,player,onPlayerHit){let highestTension=0;for(const m of monsters){if(m.banishTimer>0){m.banishTimer-=dt;continue}m.anim+=dt*7;if(m.attackCooldown>0)m.attackCooldown-=dt;const dx=(player.x+player.w/2)-(m.x+m.w/2),dist=Math.abs(dx),sameFloor=Math.abs(player.y-m.y)<110;
+if(m.type==='SHADOW'&&player.flashlightOn&&player.battery>0&&sameFloor&&dist<310){const looking=(player.facing===1&&dx>0)||(player.facing===-1&&dx<0);if(looking){m.banishTimer=6.5;m.state='PATROL';AudioEngine.playMonsterScreech('SHADOW');continue}}
+let detected=false;if(!player.hiding&&sameFloor){const facingPlayer=(m.dir===1&&dx>0)||(m.dir===-1&&dx<0);const eff=player.flashlightOn?m.sightRange*1.2:m.sightRange*.75;if(m.sightRange>0&&facingPlayer&&dist<eff)detected=true;if(player.noiseLevel>0&&dist<Math.min(m.hearRange,player.noiseLevel*1.25))detected=true}
+if(detected){if(m.state!=='CHASE')AudioEngine.playMonsterScreech(m.type);m.state='CHASE';m.targetX=player.x;m.stateTimer=4}
+if(m.state==='PATROL'){m.x+=m.dir*m.speedPatrol*dt;if(m.x<=m.minX){m.x=m.minX;m.dir=1}if(m.x>=m.maxX){m.x=m.maxX;m.dir=-1}if(dist<420)highestTension=Math.max(highestTension,1)}
+else if(m.state==='CHASE'){highestTension=2;m.dir=dx>=0?1:-1;m.x+=m.dir*m.speedChase*dt;m.stateTimer-=dt;if(dist<(m.w+player.w)*.65&&sameFloor&&!player.hiding&&m.attackCooldown<=0){m.attackCooldown=1.2;onPlayerHit(m.damage,m.name)}if(m.stateTimer<=0||player.hiding){m.state='SEARCH';m.stateTimer=3}}
+else if(m.state==='SEARCH'){highestTension=Math.max(highestTension,1);m.stateTimer-=dt;if(Math.floor(m.stateTimer*2)%2===0)m.dir=1;else m.dir=-1;if(m.stateTimer<=0)m.state='PATROL'}}
+AudioEngine.setTension(highestTension);return highestTension}
+
+function drawMonsterBody(ctx,m,cameraX,isDarkOverlay=false){
+  const x=m.x-cameraX,y=m.y;
+  const twitch=Math.sin(m.anim*2.2)*2.8,armSwing=Math.sin(m.anim)*6,chasePulse=m.state==='CHASE'?1.15:1;
+  ctx.save();
+  // ظل أرضي
+  if(!isDarkOverlay){
+    ctx.fillStyle='rgba(0,0,0,0.35)';
+    ctx.beginPath();ctx.ellipse(x+m.w/2,y+m.h+3,m.w*0.42,5,0,0,Math.PI*2);ctx.fill();
+  }
+  if(isDarkOverlay){
+    ctx.fillStyle='rgba(22,28,38,0.55)';
+    ctx.strokeStyle=m.rim;
+    ctx.lineWidth=1.6;
+  }else{
+    ctx.fillStyle=m.color;
+    ctx.strokeStyle=m.rim;
+    ctx.lineWidth=1.4;
+  }
+
+  if(m.type==='SILENT'){
+    // طويل ونحيل، رأس مستطيل، عيون بيضاء باردة
+    ctx.fillRect(x+8,y+22,m.w-16,m.h-28);
+    ctx.strokeRect(x+8,y+22,m.w-16,m.h-28);
+    // أذرع طويلة جداً
+    ctx.fillRect(x-2,y+26+armSwing,7,m.h*0.55);
+    ctx.fillRect(x+m.w-5,y+26-armSwing,7,m.h*0.55);
+    // أصابع حادة
+    ctx.fillStyle=isDarkOverlay?'rgba(30,36,48,0.6)':'#2a3340';
+    for(let i=0;i<3;i++){
+      ctx.fillRect(x-1+i*2.5,y+26+armSwing+m.h*0.55,2,8);
+      ctx.fillRect(x+m.w-4+i*2.5,y+26-armSwing+m.h*0.55,2,8);
+    }
+    // رأس مستطيل
+    ctx.fillStyle=isDarkOverlay?'rgba(28,34,46,0.55)':m.color;
+    ctx.fillRect(x+m.w/2-11+twitch,y+2,22,22);
+    ctx.strokeRect(x+m.w/2-11+twitch,y+2,22,22);
+    // عيون باردة بيضاء/زرقاء
+    ctx.shadowColor='#a8d4ff';
+    ctx.shadowBlur=isDarkOverlay?14:7;
+    ctx.fillStyle=m.state==='CHASE'?'#e8f4ff':'#9ec9ef';
+    const eyeDir=m.dir===1?4:-9;
+    ctx.fillRect(x+m.w/2+eyeDir+twitch,y+10,6,3.5);
+    ctx.fillRect(x+m.w/2+eyeDir+(m.dir===1?-9:9)+twitch,y+10,6,3.5);
+  }
+  else if(m.type==='BLIND'){
+    // أعمى معصوب العينين، فم مفتوح، أذرع مخلبية
+    ctx.fillRect(x+6,y+24,m.w-12,m.h-30);
+    ctx.strokeRect(x+6,y+24,m.w-12,m.h-30);
+    // أذرع منحنية
+    ctx.fillRect(x-4,y+30+armSwing*0.7,9,m.h*0.42);
+    ctx.fillRect(x+m.w-5,y+30-armSwing*0.7,9,m.h*0.42);
+    // مخالب
+    ctx.fillStyle=isDarkOverlay?'rgba(40,20,20,0.6)':'#3a1818';
+    ctx.fillRect(x-6,y+30+armSwing*0.7+m.h*0.4,4,10);
+    ctx.fillRect(x-2,y+30+armSwing*0.7+m.h*0.42,4,12);
+    ctx.fillRect(x+m.w+1,y+30-armSwing*0.7+m.h*0.4,4,10);
+    ctx.fillRect(x+m.w-3,y+30-armSwing*0.7+m.h*0.42,4,12);
+    // رأس
+    ctx.fillStyle=isDarkOverlay?'rgba(40,24,24,0.55)':m.color;
+    ctx.beginPath();ctx.arc(x+m.w/2+twitch,y+14,13,0,Math.PI*2);ctx.fill();ctx.stroke();
+    // عصابة العينين
+    ctx.fillStyle='#1a0e0e';
+    ctx.fillRect(x+m.w/2-14+twitch,y+10,28,7);
+    // خطوط حمراء على العصابة
+    ctx.strokeStyle='#8b1a1a';
+    ctx.lineWidth=1.5;
+    ctx.beginPath();ctx.moveTo(x+m.w/2-10+twitch,y+11);ctx.lineTo(x+m.w/2+10+twitch,y+16);ctx.stroke();
+    // فم مفتوح
+    ctx.fillStyle='#2a0a0a';
+    ctx.beginPath();ctx.ellipse(x+m.w/2+twitch,y+24,6,4,0,0,Math.PI*2);ctx.fill();
+    // أسنان
+    ctx.fillStyle='#d4c4b0';
+    ctx.fillRect(x+m.w/2-4+twitch,y+21,2.5,4);
+    ctx.fillRect(x+m.w/2+1+twitch,y+21,2.5,4);
+  }
+  else if(m.type==='SHADOW'){
+    // شبه دخاني، أطراف متموجة
+    const wave=Math.sin(m.anim*3)*4;
+    ctx.beginPath();
+    ctx.moveTo(x+m.w/2,y+6);
+    ctx.lineTo(x+m.w-4+wave,y+28);
+    ctx.lineTo(x+m.w-2,y+m.h-8);
+    ctx.lineTo(x+m.w/2,y+m.h);
+    ctx.lineTo(x+2,y+m.h-8);
+    ctx.lineTo(x+4-wave,y+28);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    // ألسنة ظل
+    ctx.globalAlpha=0.55;
+    ctx.fillRect(x-6+wave,y+40,8,m.h*0.35);
+    ctx.fillRect(x+m.w-2-wave,y+38,8,m.h*0.4);
+    ctx.globalAlpha=1;
+    // رأس ضبابي
+    ctx.beginPath();ctx.arc(x+m.w/2+twitch*0.5,y+14,11,0,Math.PI*2);ctx.fill();
+    // عين واحدة بنفسجية
+    ctx.shadowColor='#7b5cff';
+    ctx.shadowBlur=isDarkOverlay?16:9;
+    ctx.fillStyle=m.state==='CHASE'?'#c4b0ff':'#8b6cf0';
+    const eyeX=m.dir===1?x+m.w/2+2:x+m.w/2-7;
+    ctx.beginPath();ctx.arc(eyeX+twitch*0.5,y+13,4,0,Math.PI*2);ctx.fill();
+  }
+  else if(m.type==='EXPERIMENT'){
+    // ضخم غير متماثل، أنابيب وندوب
+    ctx.fillRect(x+4,y+26,m.w-8,m.h-32);
+    ctx.strokeRect(x+4,y+26,m.w-8,m.h-32);
+    // كتف أكبر من جهة
+    ctx.fillRect(x-2,y+22,18,16);
+    ctx.fillRect(x+m.w-20,y+28,18,12);
+    // أذرع غير متساوية
+    ctx.fillRect(x-8,y+34+armSwing*0.5,12,m.h*0.5);
+    ctx.fillRect(x+m.w-6,y+38-armSwing*0.4,10,m.h*0.42);
+    // رأس مشوه
+    ctx.beginPath();
+    ctx.ellipse(x+m.w/2+twitch,y+14,15,13,0,0,Math.PI*2);
+    ctx.fill();ctx.stroke();
+    // ندبة
+    ctx.strokeStyle='#8b2020';
+    ctx.lineWidth=2;
+    ctx.beginPath();ctx.moveTo(x+m.w/2-8+twitch,y+6);ctx.lineTo(x+m.w/2+10+twitch,y+20);ctx.stroke();
+    // عيون حمراء متعددة
+    ctx.shadowColor='#ff2020';
+    ctx.shadowBlur=isDarkOverlay?14:8;
+    ctx.fillStyle=m.state==='CHASE'?'#ff5555':'#ff1a1a';
+    ctx.fillRect(x+m.w/2-10+twitch,y+10,5,4);
+    ctx.fillRect(x+m.w/2+4+twitch,y+9,6,5);
+    ctx.fillRect(x+m.w/2-2+twitch,y+16,4,3);
+    // أنبوب على الرأس
+    ctx.shadowBlur=0;
+    ctx.strokeStyle='#4a6a7a';
+    ctx.lineWidth=2.5;
+    ctx.beginPath();ctx.moveTo(x+m.w/2+12+twitch,y+4);ctx.lineTo(x+m.w/2+18+twitch,y-8);ctx.stroke();
+    ctx.fillStyle='#3a8a9a';
+    ctx.beginPath();ctx.arc(x+m.w/2+18+twitch,y-8,4,0,Math.PI*2);ctx.fill();
+  }
+  else {
+    // fallback
+    ctx.fillRect(x+5,y+20,m.w-10,m.h-20);
+    ctx.strokeRect(x+5,y+20,m.w-10,m.h-20);
+    ctx.beginPath();ctx.arc(x+m.w/2+twitch,y+13,12,0,Math.PI*2);ctx.fill();ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function renderAll(ctx,monsters,cameraX){
+  for(const m of monsters){
+    if(m.banishTimer>0)continue;
+    drawMonsterBody(ctx,m,cameraX,false);
+  }
+}
+
+function renderDarknessOverlay(ctx,monsters,cameraX,viewWidth){
+  for(const m of monsters){
+    if(m.banishTimer>0)continue;
+    const x=m.x-cameraX;
+    // إذا كان الوحش داخل الشاشة: أظهر ظله وعينيه المضيئة فوق طبقة الظلام
+    if(x+m.w>=-20&&x<=viewWidth+20){
+      drawMonsterBody(ctx,m,cameraX,true);
+    }else{
+      // مؤشر تحذيري على حافة الشاشة إذا كان الوحش قريباً من جهة اليمين أو اليسار
+      const distOffscreen=x<0?Math.abs(x+m.w):(x-viewWidth);
+      if(distOffscreen<520){
+        const alpha=Math.max(0.18,0.65*(1-distOffscreen/520));
+        ctx.save();
+        const edgeX=x<0?0:viewWidth-28;
+        const grad=ctx.createLinearGradient(edgeX,0,edgeX+28,0);
+        if(x<0){
+          grad.addColorStop(0,`rgba(220,30,30,${alpha})`);
+          grad.addColorStop(1,'rgba(220,30,30,0)');
+        }else{
+          grad.addColorStop(0,'rgba(220,30,30,0)');
+          grad.addColorStop(1,`rgba(220,30,30,${alpha})`);
+        }
+        ctx.fillStyle=grad;
+        ctx.fillRect(edgeX,m.y-20,28,m.h+40);
+        ctx.restore();
+      }
+    }
+  }
+}
+return{create,updateAll,renderAll,renderDarknessOverlay}})();
+
+const LevelManager=(()=>{const CHAPTERS=[
+{id:0,theme:'house',title_ar:'الفصل الأول: المنزل المهجور',title_en:'CHAPTER 1: THE ABANDONED HOUSE',obj_ar:'استكشف المنزل، اجمع المذكرة السرية، وافتح باب القبو.',obj_en:'Explore the house, find the secret note, and unlock the basement door.',intro_ar:'أستيقظ على صوت الرعد... رأسي ينبض بالألم. أين أنا؟ ولماذا لا أتذكر اسمي؟',intro_en:'I wake to the sound of thunder... My head throbs. Where am I? Why can I not remember my name?',width:2200,spawn:{x:90,y:400},platforms:[{x:0,y:480,w:2200,h:120},{x:420,y:390,w:140,h:20},{x:1180,y:380,w:160,h:20}],hidingSpots:[{x:760,y:390,w:54,h:90},{x:1520,y:390,w:54,h:90}],lights:[{x:140,y:410,radius:180,flicker:false},{x:950,y:340,radius:210,flicker:true},{x:1450,y:350,radius:180,flicker:true},{x:1950,y:380,radius:190,flicker:false}],items:[{type:'note',id:'note_1',x:470,y:355},{type:'battery',id:'bat_1',x:860,y:445},{type:'medkit',id:'med_1',x:1230,y:345}],monsters:[{type:'SILENT',x:1450,y:378,minX:1100,maxX:1850}],exit:{x:2040,y:380,w:60,h:100,puzzle:{type:'keypad',code:'1904',title_ar:'قفل باب القبو',title_en:'Basement Door Keypad',desc_ar:'أدخل الرمز المكون من 4 أرقام المكتوب في مذكرة المدخل.',desc_en:'Enter the 4-digit code written in the entrance note.'}}},
+{id:1,theme:'basement',title_ar:'الفصل الثاني: القبو المظلم',title_en:'CHAPTER 2: THE BASEMENT',obj_ar:'تجنب الوحش الأعمى بالانحناء، وأصلح مولد الكهرباء لفتح البوابة.',obj_en:'Evade The Blind by crouching, and repair the power generator to open the gate.',intro_ar:'رائحة الرطوبة والصدأ تملأ المكان... هناك شيء يتحرك في الظلام، لكنه لا يرى.',intro_en:'The stench of dampness and rust fills the air... Something moves in the dark, yet it cannot see.',width:2400,spawn:{x:90,y:400},platforms:[{x:0,y:480,w:2400,h:120},{x:650,y:395,w:180,h:20}],hidingSpots:[{x:520,y:390,w:54,h:90},{x:1380,y:390,w:54,h:90}],lights:[{x:120,y:410,radius:170,flicker:false},{x:1100,y:360,radius:190,flicker:true},{x:2150,y:390,radius:185,flicker:false}],items:[{type:'note',id:'note_2',x:340,y:445},{type:'battery',id:'bat_2',x:720,y:360},{type:'medkit',id:'med_2',x:1680,y:445}],monsters:[{type:'BLIND',x:1250,y:394,minX:780,maxX:1950}],exit:{x:2220,y:380,w:60,h:100,puzzle:{type:'wires',title_ar:'صندوق مولد الكهرباء',title_en:'Generator Fuse Box',desc_ar:'أعد توصيل الأسلاك الثلاثة لتشغيل المصعد المؤدي للمستشفى القديم.',desc_en:'Reconnect all three wires to power the lift to the Old Hospital.'}}},
+{id:2,theme:'hospital',title_ar:'الفصل الثالث: المستشفى القديم',title_en:'CHAPTER 3: THE OLD HOSPITAL',obj_ar:'اعثر على مفتاح الجناح الجراحي واستخدم المصباح لصد مخلوق الظل.',obj_en:'Find the Surgical Wing Key and use your flashlight to repel The Shadow.',intro_ar:'أسرّة صدئة وملفات طبية مبعثرة... لقد أجروا تجارب جراحية على عشرات البشر هنا.',intro_en:'Rusted beds and scattered medical charts... They performed surgical experiments on dozens here.',width:2600,spawn:{x:90,y:400},platforms:[{x:0,y:480,w:2600,h:120},{x:540,y:385,w:170,h:20},{x:1450,y:385,w:190,h:20}],hidingSpots:[{x:890,y:390,w:54,h:90},{x:1920,y:390,w:54,h:90}],lights:[{x:130,y:410,radius:180,flicker:false},{x:1240,y:350,radius:200,flicker:true},{x:2380,y:380,radius:185,flicker:false}],items:[{type:'note',id:'note_3',x:310,y:445},{type:'key',id:'surgical_key',x:1520,y:350},{type:'battery',id:'bat_3',x:1050,y:445},{type:'medkit',id:'med_3',x:2050,y:445}],monsters:[{type:'SHADOW',x:1350,y:388,minX:800,maxX:2150}],exit:{x:2420,y:380,w:60,h:100,requiredKey:'surgical_key'}},
+{id:3,theme:'lab',title_ar:'الفصل الرابع: المختبر السري',title_en:'CHAPTER 4: THE SECRET LAB',obj_ar:'اكتشف حقيقة مشروع أوميغا وفك شفرة نظام الحجر الصحي.',obj_en:'Uncover the truth of Project Omega and override the quarantine console.',intro_ar:'أجهزة حاسوب قديمة وأنابيب اختبار محطمة... صورتي معلقة على لوحة كبار العلماء!',intro_en:'Old mainframes and shattered containment tubes... My own photo hangs on the Lead Scientists board!',width:2700,spawn:{x:90,y:400},platforms:[{x:0,y:480,w:2700,h:120},{x:780,y:380,w:180,h:20}],hidingSpots:[{x:620,y:390,w:54,h:90},{x:1640,y:390,w:54,h:90}],lights:[{x:140,y:410,radius:185,flicker:false},{x:1350,y:340,radius:210,flicker:true},{x:2480,y:380,radius:195,flicker:false}],items:[{type:'note',id:'note_4',x:420,y:445},{type:'note',id:'note_5',x:840,y:345},{type:'battery',id:'bat_4',x:1480,y:445},{type:'medkit',id:'med_4',x:2100,y:445}],monsters:[{type:'SILENT',x:1150,y:378,minX:700,maxX:1600},{type:'SHADOW',x:1980,y:388,minX:1500,maxX:2350}],exit:{x:2520,y:380,w:60,h:100,puzzle:{type:'keypad',code:'7392',title_ar:'وحدة التحكم بالمختبر',title_en:'Lab Quarantine Console',desc_ar:'أدخل رمز بروتوكول المفاعل المذكور في ملفات المختبر.',desc_en:'Enter the reactor protocol code from the lab files.'}}},
+{id:4,theme:'underground',title_ar:'الفصل الخامس: الأنفاق العميقة',title_en:'CHAPTER 5: THE UNDERGROUND',obj_ar:'انجُ من مطاردة الوحش العملاق وافتح البوابة الحجرية القديمة.',obj_en:'Survive the pursuit of The Experiment and unlock the ancient stone gate.',intro_ar:'الأنفاق تنهار من حولي... خطوات ثقيلة تهز الأرض. التجربة رقم 00 تحررت!',intro_en:'The tunnels are collapsing around me... Heavy footsteps shake the earth. Experiment #00 is loose!',width:2900,spawn:{x:90,y:400},platforms:[{x:0,y:480,w:2900,h:120},{x:950,y:385,w:180,h:20}],hidingSpots:[{x:740,y:390,w:54,h:90},{x:1780,y:390,w:54,h:90}],lights:[{x:140,y:410,radius:180,flicker:false},{x:1450,y:360,radius:205,flicker:true},{x:2680,y:380,radius:195,flicker:false}],items:[{type:'note',id:'note_6',x:520,y:445},{type:'battery',id:'bat_5',x:1010,y:350},{type:'medkit',id:'med_5',x:2150,y:445}],monsters:[{type:'EXPERIMENT',x:1550,y:364,minX:900,maxX:2500}],exit:{x:2720,y:380,w:60,h:100,puzzle:{type:'symbols',title_ar:'البوابة الحجرية السفلية',title_en:'Subterranean Stone Seal',desc_ar:'رتب الرموز الثلاثة: القمر (☽)، العين (👁)، والشمعة (🕯).',desc_en:'Align the three symbols: Moon (☽), Eye (👁), and Candle (🕯).'}}},
+{id:5,theme:'finale',title_ar:'الفصل السادس: الليلة الأخيرة',title_en:'CHAPTER 6: THE LAST NIGHT',obj_ar:'واجه الكابوس الأخير واختر مصيرك عند بوابة الخروج.',obj_en:'Confront the final nightmare and choose your fate at the exit gate.',intro_ar:'الفجر يقترب... كل الأسرار انكشفت. حان وقت القرار الأخير.',intro_en:'Dawn approaches... All secrets are laid bare. It is time for the final decision.',width:2400,spawn:{x:90,y:400},platforms:[{x:0,y:480,w:2400,h:120}],hidingSpots:[{x:680,y:390,w:54,h:90},{x:1420,y:390,w:54,h:90}],lights:[{x:140,y:410,radius:190,flicker:false},{x:1150,y:360,radius:215,flicker:true},{x:2180,y:380,radius:230,flicker:false}],items:[{type:'medkit',id:'med_6',x:450,y:445},{type:'battery',id:'bat_6',x:980,y:445}],monsters:[{type:'EXPERIMENT',x:1250,y:364,minX:750,maxX:1950},{type:'BLIND',x:1750,y:394,minX:1100,maxX:2050}],exit:{x:2210,y:380,w:70,h:100,isFinale:true}},
+{id:6,theme:'finale',title_ar:'الفصل السابع: الصدى الأخير',title_en:'CHAPTER 7: THE FINAL ECHO',obj_ar:'واجه نفسك في غرفة المرآة، اجمع الشريط الأخير، ثم قرر إن كنت ستمحو المشروع أم تُكمله.',obj_en:'Confront yourself in the Mirror Chamber, recover the final tape, then decide whether to erase the project or complete it.',intro_ar:'الفجر لم يأتِ... استيقظت مرة أخرى داخل المنزل. الجدران تنزف ذكريات. صوتٌ يشبه صوتي يقول: "لم تنتهِ التجربة بعد".',intro_en:'Dawn never came... I woke up again inside the house. The walls bleed memories. A voice that sounds like mine whispers: "The experiment is not over."',width:2600,spawn:{x:90,y:400},platforms:[{x:0,y:480,w:2600,h:120},{x:620,y:380,w:160,h:20},{x:1380,y:360,w:200,h:20}],hidingSpots:[{x:480,y:390,w:54,h:90},{x:1120,y:390,w:54,h:90},{x:1950,y:390,w:54,h:90}],lights:[{x:160,y:410,radius:170,flicker:false},{x:980,y:340,radius:200,flicker:true},{x:1680,y:350,radius:190,flicker:true},{x:2350,y:380,radius:210,flicker:false}],items:[{type:'note',id:'note_7',x:390,y:445},{type:'battery',id:'bat_7',x:780,y:345},{type:'medkit',id:'med_7',x:1520,y:325},{type:'key',id:'mirror_key',x:2050,y:445}],monsters:[{type:'SHADOW',x:1050,y:388,minX:700,maxX:1600},{type:'EXPERIMENT',x:1850,y:364,minX:1400,maxX:2300}],exit:{x:2420,y:380,w:70,h:100,requiredKey:'mirror_key',puzzle:{type:'symbols',target:['👁','🗝','🔥'],pool:['☽','☀','👁','🕯','🗝','🔥'],title_ar:'غرفة المرايا',title_en:'The Mirror Chamber',desc_ar:'رتب الرموز الثلاثة التي تمثل هويتك الحقيقية: العين (👁)، المفتاح (🗝)، والنار (🔥).',desc_en:'Align the three symbols that represent your true identity: Eye (👁), Key (🗝), and Fire (🔥).'}}}];
+function getChapter(idx){return JSON.parse(JSON.stringify(CHAPTERS[idx]||CHAPTERS[0]))}
+return{CHAPTERS,getChapter}})();
+
+(()=>{
+const canvas=document.getElementById('gameCanvas'),ctx=canvas.getContext('2d');
+const MAX_DPR=2;
+let renderScale=1,renderOffsetX=0,renderOffsetY=0;
+let settings=SaveSystem.loadSettings();let saveData=SaveSystem.loadGame();
+let gameState='MENU',currentChapterIdx=0,unlockedChapters=saveData?(saveData.unlockedChapters||1):1;
+let level=null,player=null,monsters=[],cameraX=0,screenShake=0,lastTime=0,subtitleTimer=0;
+const input={left:false,right:false,jump:false,crouch:false,sprint:false};
+window.GAME_QUALITY=settings.quality;
+
+function getViewSize(){
+  const rect=canvas.getBoundingClientRect();
+  if(rect.height>rect.width&&rect.width>0){
+    const vh=720;
+    const vw=Math.max(460,Math.round(vh*(rect.width/rect.height)));
+    return {w:vw,h:vh};
+  }
+  return {w:1280,h:720};
+}
+
+const I18N={ar:{tagline:'الظلام يتذكر ما نسيته...',menu_new:'لعبة جديدة (NEW GAME)',menu_continue:'متابعة (CONTINUE)',menu_chapters:'الفصول (CHAPTERS)',menu_settings:'الإعدادات (SETTINGS)',hud_health:'الصحة',hud_stamina:'اللياقة',hud_battery:'البطارية',btn_inventory:'الحقيبة [I]',btn_back:'رجوع',btn_close:'إغلاق',btn_cancel:'إلغاء',set_music:'مستوى الموسيقى',set_sfx:'المؤثرات الصوتية',set_touch:'أزرار اللمس على الشاشة',set_quality:'جودة الإضاءة والضباب',set_controls:'تخصيص أزرار التحكم (اضغط لتغيير الزر)',opt_auto:'تلقائي',opt_on:'مفعّل دائماً',opt_off:'معطّل',opt_high:'عالية (سينمائية)',opt_low:'متوسطة (للأجهزة الضعيفة)',inv_title:'الحقيبة والأدلة',inv_items:'الأدوات والموارد',inv_notes:'الوثائق والتسجيلات',pause_title:'إيقاف مؤقت',pause_resume:'استئناف اللعب',pause_checkpoint:'إعادة من آخر نقطة حفظ',pause_quit:'القائمة الرئيسية',death_title:'لقد سقطت في الظلام',death_desc:'المخلوق وجدك...',death_retry:'العودة إلى نقطة الحفظ',chap_done:'اكتمل الفصل',chap_next:'الفصل التالي',ctrl_crouch:'انحناء',ctrl_sprint:'جري',prompt_hide:'اضغط [E] للاختباء داخل الخزانة',prompt_unhide:'اضغط [E] للخروج من الخزانة',prompt_pickup:'اضغط [E] لأخذ العنصر',prompt_exit:'اضغط [E] للتفاعل مع البوابة'},en:{tagline:'The darkness remembers what you forgot...',menu_new:'NEW GAME',menu_continue:'CONTINUE',menu_chapters:'CHAPTERS',menu_settings:'SETTINGS',hud_health:'HEALTH',hud_stamina:'STAMINA',hud_battery:'BATTERY',btn_inventory:'BAG [I]',btn_back:'BACK',btn_close:'CLOSE',btn_cancel:'CANCEL',set_music:'Music Volume',set_sfx:'SFX Volume',set_touch:'On-Screen Touch Controls',set_quality:'Lighting & Fog Quality',set_controls:'Customize Controls (Click to Rebind)',opt_auto:'Auto',opt_on:'Always On',opt_off:'Off',opt_high:'High (Cinematic)',opt_low:'Medium (Performance)',inv_title:'Inventory & Clues',inv_items:'Supplies & Keys',inv_notes:'Documents & Recordings',pause_title:'PAUSED',pause_resume:'RESUME',pause_checkpoint:'LOAD LAST CHECKPOINT',pause_quit:'MAIN MENU',death_title:'YOU FELL INTO DARKNESS',death_desc:'The creature found you...',death_retry:'RETRY CHECKPOINT',chap_done:'CHAPTER COMPLETE',chap_next:'NEXT CHAPTER',ctrl_crouch:'Crouch',ctrl_sprint:'Sprint',prompt_hide:'Press [E] to hide inside locker',prompt_unhide:'Press [E] to exit locker',prompt_pickup:'Press [E] to pick up',prompt_exit:'Press [E] to interact with gate'}};
+
+function applyLanguage(lang){settings.lang=lang;SaveSystem.saveSettings(settings);document.documentElement.lang=lang;document.documentElement.dir=lang==='ar'?'rtl':'ltr';document.getElementById('lang-ar').classList.toggle('active',lang==='ar');document.getElementById('lang-en').classList.toggle('active',lang==='en');document.querySelectorAll('[data-i18n]').forEach(el=>{const key=el.getAttribute('data-i18n');if(I18N[lang][key])el.textContent=I18N[lang][key]});if(level){document.getElementById('chapter-banner').textContent=lang==='ar'?level.title_ar:level.title_en;document.getElementById('objective-box').textContent=lang==='ar'?level.obj_ar:level.obj_en}}
+
+function resize(){const rect=canvas.getBoundingClientRect();const dpr=Math.min(window.devicePixelRatio||1,MAX_DPR);canvas.width=Math.floor(rect.width*dpr);canvas.height=Math.floor(rect.height*dpr);const {w:vw,h:vh}=getViewSize();renderScale=Math.min(rect.width/vw,rect.height/vh);renderOffsetX=(rect.width-vw*renderScale)/2;renderOffsetY=(rect.height-vh*renderScale)/2;ctx.setTransform(dpr,0,0,dpr,0,0);ctx.imageSmoothingEnabled=false;updateTouchVisibility()}
+window.addEventListener('resize',resize);window.addEventListener('orientationchange',()=>setTimeout(resize,120));resize();
+
+function showSubtitle(text,duration=5){const box=document.getElementById('subtitle-box');box.textContent=text;box.classList.remove('hidden');subtitleTimer=duration}
+
+function updateTouchVisibility(){const mc=document.getElementById('mobile-controls');const isTouch='ontouchstart'in window||navigator.maxTouchPoints>0;const show=gameState==='PLAYING'&&(settings.touch==='on'||(settings.touch==='auto'&&isTouch));mc.classList.toggle('hidden',!show)}
+
+function startChapter(chapIdx,fromSave=false){
+  try{AudioEngine.init();AudioEngine.setVolumes(settings.music,settings.sfx);}catch(e){console.warn('Audio init skipped',e)}
+  currentChapterIdx=chapIdx;
+  level=LevelManager.getChapter(chapIdx);
+  if(fromSave&&saveData&&saveData.chapter===chapIdx){
+    player=PlayerController.create(saveData.player.x,saveData.player.y);
+    player.health=saveData.player.health;
+    player.battery=saveData.player.battery;
+    InventorySystem.load(saveData.inventory);
+  }else{
+    player=PlayerController.create(level.spawn.x,level.spawn.y);
+    if(!fromSave&&chapIdx===0)InventorySystem.reset();
+    try{saveCheckpoint();}catch(e){console.warn('Save skipped',e)}
+  }
+  monsters=level.monsters.map(m=>MonsterSystem.create(m.type,m.x,m.y,m.minX,m.maxX));
+  cameraX=0;
+  input.left=false;input.right=false;input.jump=false;input.crouch=false;input.sprint=false;
+  const crouchBtn=document.getElementById('touch-crouch');
+  if(crouchBtn)crouchBtn.classList.remove('active');
+  hideAllScreens();
+  const hud=document.getElementById('hud');
+  if(hud)hud.classList.remove('hidden');
+  gameState='PLAYING';
+  try{updateTouchVisibility();}catch(e){}
+  try{
+    document.documentElement.lang=settings.lang;
+    document.documentElement.dir=settings.lang==='ar'?'rtl':'ltr';
+    document.getElementById('chapter-banner').textContent=settings.lang==='ar'?level.title_ar:level.title_en;
+    document.getElementById('objective-box').textContent=settings.lang==='ar'?level.obj_ar:level.obj_en;
+  }catch(e){}
+  showSubtitle(settings.lang==='ar'?level.intro_ar:level.intro_en,6);
+  try{resize();}catch(e){}
+}
+
+function saveCheckpoint(){
+  try{
+    unlockedChapters=Math.max(unlockedChapters,currentChapterIdx+1);
+    saveData={chapter:currentChapterIdx,unlockedChapters,player:{x:player.x,y:player.y,health:player.health,battery:player.battery},inventory:InventorySystem.exportState()};
+    SaveSystem.saveGame(saveData);
+    updateContinueButton();
+  }catch(e){console.warn('saveCheckpoint failed',e)}
+}
+
+function updateContinueButton(){
+  try{
+    const btn=document.getElementById('btn-continue');
+    if(btn)btn.disabled=!SaveSystem.loadGame();
+  }catch(e){}
+}
+function hideAllScreens(){document.querySelectorAll('.screen-overlay').forEach(el=>el.classList.add('hidden'))}
+
+function handlePlayerHit(damage,monsterName){player.health=Math.max(0,player.health-damage);screenShake=.45;AudioEngine.playHeartbeat(1.2);if(player.health<=0){gameState='PAUSED';updateTouchVisibility();document.getElementById('death-reason').textContent=settings.lang==='ar'?`تم القضاء عليك بواسطة: ${monsterName}`:`Killed by: ${monsterName}`;document.getElementById('death-screen').classList.remove('hidden')}}
+
+function tryInteract(){if(gameState!=='PLAYING'||!player||!level)return;if(player.hiding){player.hiding=false;AudioEngine.playDoorCreak();return}
+for(const spot of level.hidingSpots){if(Math.abs((player.x+player.w/2)-(spot.x+spot.w/2))<45){player.hiding=true;AudioEngine.playDoorCreak();return}}
+for(let i=level.items.length-1;i>=0;i--){const it=level.items[i];if(Math.abs(player.x-it.x)<55){InventorySystem.addItem(it.type,it.id);AudioEngine.playClick();level.items.splice(i,1);saveCheckpoint();showSubtitle(settings.lang==='ar'?'تمت إضافة العنصر إلى الحقيبة وحفظ التقدم.':'Item added to bag and progress saved.',2.5);return}}
+const ex=level.exit;if(Math.abs(player.x-ex.x)<70){if(ex.requiredKey&&!InventorySystem.hasKey(ex.requiredKey)){const keyMsg=ex.requiredKey==='mirror_key'?(settings.lang==='ar'?'الباب مقفل! تحتاج إلى مفتاح المرايا.':'Locked! You need the Mirror Key.'):(settings.lang==='ar'?'الباب مقفل! تحتاج إلى مفتاح الجناح الجراحي.':'Locked! You need the Surgical Wing Key.');showSubtitle(keyMsg,3);return}
+if(ex.puzzle&&!ex.solved){gameState='MODAL';updateTouchVisibility();PuzzleSystem.open(ex.puzzle,settings.lang,()=>{ex.solved=true;AudioEngine.playDoorCreak();completeChapter()});return}
+completeChapter()}}
+
+function completeChapter(){if(currentChapterIdx<LevelManager.CHAPTERS.length-1){gameState='PAUSED';updateTouchVisibility();unlockedChapters=Math.max(unlockedChapters,currentChapterIdx+2);saveData={chapter:currentChapterIdx+1,unlockedChapters,player:{x:90,y:400,health:Math.min(100,player.health+25),battery:100},inventory:InventorySystem.exportState()};SaveSystem.saveGame(saveData);document.getElementById('chap-summary').textContent=settings.lang==='ar'?`نجوت من ${level.title_ar}. تم حفظ تقدمك تلقائياً.`:`You survived ${level.title_en}. Progress automatically saved.`;document.getElementById('chapter-complete-screen').classList.remove('hidden')}else triggerEnding()}
+
+function triggerEnding(){gameState='ENDING';updateTouchVisibility();document.getElementById('hud').classList.add('hidden');const cluesCount=InventorySystem.getState().notes.length,lang=settings.lang;let title='',text='',badge='';
+if(cluesCount>=6){badge='ENDING II — THE TRUTH';title=lang==='ar'?'النهاية الحقيقية: الحقيقة الكاملة':'TRUE ENDING: THE TRUTH';text=lang==='ar'?'لقد جمعت كل الأدلة السرية بما فيها رسالة الماضي. تذكرت أنك كبير الباحثين، وقمت بتفعيل بروتوكول تدمير المختبر وكشف جرائم المؤسسة للعالم مع بزوغ الفجر.':'You recovered every secret file including the message from the past. Remembering your identity as Lead Researcher, you triggered the lab destruction protocol and exposed the organization to the world at dawn.'}
+else if(player.health>=45){badge='ENDING I — ESCAPE';title=lang==='ar'?'النهاية الأولى: الهروب':'ENDING I: ESCAPE';text=lang==='ar'?'كسرت البوابة الحديدية الأخيرة وركضت نحو الغابة مع أول خيوط الصباح. نجوت بحياتك، لكن أسرار المنزل الملعون لا تزال تطارد ذاكرتك.':'You broke through the final iron gate and ran into the forest at first light. You survived, though the secrets of the cursed house still haunt your memory.'}
+else{badge='ENDING III — THE NIGHTMARE';title=lang==='ar'?'النهاية المظلمة: الكابوس الأبدي':'DARK ENDING: THE NIGHTMARE';text=lang==='ar'?'منهكاً ومصاباً عند عتبة الخروج، أُغلقت الأبواب الفولاذية خلفك... في الظلام، سمعت صوت الطبيب يقول: "العينة رقم 01 جاهزة للمرحلة التالية".':'Exhausted and wounded at the threshold, the steel doors slammed shut behind you... In the dark, a voice whispered: "Subject #01 is ready for the next phase."'}
+document.getElementById('ending-badge').textContent=badge;document.getElementById('ending-title').textContent=title;document.getElementById('ending-text').textContent=text;document.getElementById('ending-stats').textContent=lang==='ar'?`الوثائق المكتشفة: ${cluesCount} / 7`:`Documents Recovered: ${cluesCount} / 7`;document.getElementById('ending-screen').classList.remove('hidden')}
+
+function openInventory(){if(gameState!=='PLAYING')return;gameState='MODAL';updateTouchVisibility();const lang=settings.lang,inv=InventorySystem.getState(),itemsList=document.getElementById('inv-items-list');itemsList.innerHTML='';
+const medRow=document.createElement('div');medRow.className='inv-item';medRow.innerHTML=`<span>➕ ${lang==='ar'?'حقيبة إسعاف':'Medkit'} (${inv.medkits})</span>`;const useMedBtn=document.createElement('button');useMedBtn.className='hud-btn';useMedBtn.textContent=lang==='ar'?'استخدام':'Use';useMedBtn.disabled=inv.medkits<=0||player.health>=100;useMedBtn.onclick=()=>{if(InventorySystem.useMedkit(player)){AudioEngine.playClick();openInventory()}};medRow.appendChild(useMedBtn);itemsList.appendChild(medRow);
+const batRow=document.createElement('div');batRow.className='inv-item';batRow.innerHTML=`<span>🔋 ${lang==='ar'?'بطارية مصباح':'Battery'} (${inv.batteries})</span>`;const useBatBtn=document.createElement('button');useBatBtn.className='hud-btn';useBatBtn.textContent=lang==='ar'?'شحن':'Recharge';useBatBtn.disabled=inv.batteries<=0||player.battery>=100;useBatBtn.onclick=()=>{if(InventorySystem.useBattery(player)){AudioEngine.playClick();openInventory()}};batRow.appendChild(useBatBtn);itemsList.appendChild(batRow);
+inv.keys.forEach(k=>{const kRow=document.createElement('div');kRow.className='inv-item';kRow.textContent=`🗝 ${k}`;itemsList.appendChild(kRow)});
+const notesList=document.getElementById('inv-notes-list'),reader=document.getElementById('note-reader');notesList.innerHTML='';reader.textContent=lang==='ar'?'اختر وثيقة لقراءتها...':'Select a document to read...';
+InventorySystem.getNotesData(lang).forEach(n=>{const btn=document.createElement('button');btn.className='note-btn';btn.textContent=`📄 ${n.title}`;btn.onclick=()=>{AudioEngine.playClick();reader.textContent=n.text};notesList.appendChild(btn)});
+document.getElementById('inventory-modal').classList.remove('hidden')}
+
+function renderWorld(){const {w,h}=getViewSize(),floorOffset=h-600;const dpr=Math.min(window.devicePixelRatio||1,MAX_DPR);
+ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,canvas.width,canvas.height);
+ctx.save();ctx.translate(renderOffsetX,renderOffsetY);ctx.scale(renderScale,renderScale);
+ctx.save();if(screenShake>0)ctx.translate((Math.random()-.5)*14,(Math.random()-.5)*14);
+ctx.fillStyle='#090d14';ctx.fillRect(0,0,w,h);
+ctx.fillStyle='#101722';for(let i=0;i<14;i++){const px=i*320-(cameraX*.25)%320;ctx.fillRect(px,60,48,h)}
+ctx.save();ctx.translate(-cameraX,floorOffset);ctx.fillStyle=ProceduralAssets.getWallPattern(ctx,level.theme);ctx.fillRect(cameraX,0,w,600);
+for(let wx=260;wx<level.width;wx+=580){ctx.fillStyle='#162536';ctx.fillRect(wx,140,110,170);ctx.strokeStyle='#090d12';ctx.lineWidth=6;ctx.strokeRect(wx,140,110,170);ctx.beginPath();ctx.moveTo(wx+55,140);ctx.lineTo(wx+55,310);ctx.moveTo(wx,225);ctx.lineTo(wx+110,225);ctx.stroke()}
+for(const plat of level.platforms){ctx.fillStyle='#181e26';ctx.fillRect(plat.x,plat.y,plat.w,plat.h);ctx.fillStyle='#2c3948';ctx.fillRect(plat.x,plat.y,plat.w,4)}
+for(const spot of level.hidingSpots){ctx.fillStyle='#222c38';ctx.fillRect(spot.x,spot.y,spot.w,spot.h);ctx.strokeStyle='#485c73';ctx.lineWidth=2;ctx.strokeRect(spot.x,spot.y,spot.w,spot.h)}
+for(const it of level.items){ctx.fillStyle=it.type==='note'?'#e9c46a':it.type==='medkit'?'#e63946':'#4cc9f0';ctx.beginPath();ctx.arc(it.x+10,it.y+12,8,0,Math.PI*2);ctx.fill()}
+const ex=level.exit;ctx.fillStyle='#232e3d';ctx.fillRect(ex.x,ex.y,ex.w,ex.h);ctx.strokeStyle='#6da5c0';ctx.lineWidth=2;ctx.strokeRect(ex.x,ex.y,ex.w,ex.h);
+ctx.restore();
+ctx.save();ctx.translate(0,floorOffset);MonsterSystem.renderAll(ctx,monsters,cameraX);PlayerController.render(ctx,player,cameraX);ctx.restore();
+const shiftedLights=level.lights.map(l=>({...l,y:l.y+floorOffset}));const shiftedPlayer={...player,y:player.y+floorOffset};
+LightingSystem.render(ctx,cameraX,w,h,shiftedPlayer,shiftedLights,settings.quality);
+ctx.save();ctx.translate(0,floorOffset);MonsterSystem.renderDarknessOverlay(ctx,monsters,cameraX,w);ctx.restore();
+ctx.restore();ctx.restore()}
+
+function updateHUD(){document.getElementById('health-bar').style.width=`${player.health}%`;document.getElementById('stamina-bar').style.width=`${player.stamina}%`;document.getElementById('battery-bar').style.width=`${player.battery}%`;const inv=InventorySystem.getState();document.getElementById('hud-clues').textContent=`📄 ${inv.notes.length}/7`;document.getElementById('hud-medkits').textContent=`➕ ${inv.medkits}`;document.getElementById('hud-batteries').textContent=`🔋 ${inv.batteries}`;
+const prompt=document.getElementById('interact-prompt'),lang=settings.lang;let msg='';
+if(player.hiding)msg=I18N[lang].prompt_unhide;else if(level.hidingSpots.some(s=>Math.abs((player.x+player.w/2)-(s.x+s.w/2))<45))msg=I18N[lang].prompt_hide;else if(level.items.some(it=>Math.abs(player.x-it.x)<55))msg=I18N[lang].prompt_pickup;else if(Math.abs(player.x-level.exit.x)<70)msg=I18N[lang].prompt_exit;
+if(msg){prompt.textContent=msg;prompt.classList.remove('hidden')}else prompt.classList.add('hidden')}
+
+function loop(timestamp){const dt=Math.min(.05,(timestamp-lastTime)/1000||.016);lastTime=timestamp;
+if(gameState==='PLAYING'&&player&&level){if(screenShake>0)screenShake-=dt;if(subtitleTimer>0){subtitleTimer-=dt;if(subtitleTimer<=0)document.getElementById('subtitle-box').classList.add('hidden')}
+PlayerController.update(player,dt,input,level);const tension=MonsterSystem.updateAll(monsters,dt,player,handlePlayerHit);AudioEngine.updateBreathing(dt,player.stamina,tension===2);
+document.getElementById('glitch-overlay').style.opacity=tension===2?(.25+Math.random()*.25):0;
+const {w:vw,h:vh}=getViewSize();
+const targetCam=Math.max(0,Math.min(level.width-vw,player.x-vw*.38));cameraX+=(targetCam-cameraX)*Math.min(1,dt*7);
+LightingSystem.update(dt,vw,vh,settings.quality);renderWorld();updateHUD()}
+requestAnimationFrame(loop)}
+
+window.addEventListener('keydown',e=>{const k=settings.keys;if(e.code===k.left||e.code==='ArrowLeft')input.left=true;if(e.code===k.right||e.code==='ArrowRight')input.right=true;if(e.code===k.jump||e.code==='ArrowUp')input.jump=true;if(e.code===k.crouch||e.code==='ArrowDown')input.crouch=true;if(e.code===k.sprint||e.code==='ShiftRight')input.sprint=true;
+if(e.code===k.interact&&gameState==='PLAYING')tryInteract();
+if(e.code===k.flashlight&&gameState==='PLAYING'&&player&&player.battery>0){player.flashlightOn=!player.flashlightOn;AudioEngine.playClick()}
+if(e.code===k.inventory){if(gameState==='PLAYING')openInventory();else if(!document.getElementById('inventory-modal').classList.contains('hidden')){document.getElementById('inventory-modal').classList.add('hidden');gameState='PLAYING';updateTouchVisibility()}}
+if(e.code==='Escape'&&gameState==='PLAYING'){gameState='PAUSED';updateTouchVisibility();document.getElementById('pause-menu').classList.remove('hidden')}});
+
+window.addEventListener('keyup',e=>{const k=settings.keys;if(e.code===k.left||e.code==='ArrowLeft')input.left=false;if(e.code===k.right||e.code==='ArrowRight')input.right=false;if(e.code===k.jump||e.code==='ArrowUp')input.jump=false;if(e.code===k.crouch||e.code==='ArrowDown')input.crouch=false;if(e.code===k.sprint||e.code==='ShiftRight')input.sprint=false});
+
+function bindTouch(id,prop,isToggle=false){
+  const btn=document.getElementById(id);
+  btn.addEventListener('touchstart',e=>{
+    e.preventDefault();
+    if(isToggle){
+      if(id==='touch-interact')tryInteract();
+      if(id==='touch-flashlight'&&player&&player.battery>0){player.flashlightOn=!player.flashlightOn;AudioEngine.playClick()}
+      if(id==='touch-heal'&&player&&InventorySystem.useMedkit(player))AudioEngine.playClick();
+      if(id==='touch-crouch'){input.crouch=!input.crouch;btn.classList.toggle('active',input.crouch);AudioEngine.playClick()}
+    }else input[prop]=true;
+  },{passive:false});
+  const endHold=e=>{e.preventDefault();if(!isToggle)input[prop]=false};
+  btn.addEventListener('touchend',endHold,{passive:false});
+  btn.addEventListener('touchcancel',endHold,{passive:false});
+}
+bindTouch('touch-left','left');bindTouch('touch-right','right');bindTouch('touch-jump','jump');bindTouch('touch-sprint','sprint');bindTouch('touch-crouch','crouch',true);bindTouch('touch-interact',null,true);bindTouch('touch-flashlight',null,true);bindTouch('touch-heal',null,true);
+
+function safeStart(chapIdx,fromSave){
+  try{
+    startChapter(chapIdx,fromSave);
+  }catch(err){
+    console.error('Start error:',err);
+    alert((settings&&settings.lang==='ar'?'خطأ في بدء اللعبة. جرّب فتح الملف في Chrome.':'Error starting game. Try opening the file in Chrome.')+'\n'+err.message);
+  }
+}
+function bindBtn(id,handler){
+  const el=document.getElementById(id);
+  if(!el)return;
+  let last=0;
+  const run=e=>{
+    e.preventDefault();e.stopPropagation();
+    const now=Date.now();
+    if(now-last<400)return;
+    last=now;
+    handler(e);
+  };
+  el.addEventListener('click',run);
+  el.addEventListener('touchend',run,{passive:false});
+}
+bindBtn('btn-new-game',()=>safeStart(0,false));
+bindBtn('btn-continue',()=>{
+  let s=null;
+  try{s=SaveSystem.loadGame();}catch(e){}
+  if(s)safeStart(s.chapter,true);
+});
+bindBtn('btn-chapters',()=>{
+  const list=document.getElementById('chapters-list');
+  if(!list)return;
+  list.innerHTML='';
+  LevelManager.CHAPTERS.forEach((ch,idx)=>{
+    const card=document.createElement('div');
+    const locked=idx>=unlockedChapters;
+    card.className='chapter-card'+(locked?' locked':'');
+    card.innerHTML=`<strong>${settings.lang==='ar'?ch.title_ar:ch.title_en}</strong>`;
+    if(!locked){
+      let lastTap=0;
+      const startThis=e=>{e.preventDefault();e.stopPropagation();const n=Date.now();if(n-lastTap<400)return;lastTap=n;safeStart(idx,false);};
+      card.addEventListener('click',startThis);
+      card.addEventListener('touchend',startThis,{passive:false});
+    }
+    list.appendChild(card);
+  });
+  document.getElementById('chapters-menu').classList.remove('hidden');
+});
+
+function openSettings(){document.getElementById('opt-music').value=settings.music;document.getElementById('opt-sfx').value=settings.sfx;document.getElementById('opt-touch').value=settings.touch;document.getElementById('opt-quality').value=settings.quality;const kbList=document.getElementById('keybinds-list');kbList.innerHTML='';Object.entries(settings.keys).forEach(([action,code])=>{const row=document.createElement('div');row.className='keybind-item';row.innerHTML=`<span>${action.toUpperCase()}</span>`;const btn=document.createElement('button');btn.className='keybind-btn';btn.textContent=code;btn.onclick=()=>{btn.textContent='...';const handler=ev=>{settings.keys[action]=ev.code;SaveSystem.saveSettings(settings);window.removeEventListener('keydown',handler);openSettings()};window.addEventListener('keydown',handler)};row.appendChild(btn);kbList.appendChild(row)});document.getElementById('settings-menu').classList.remove('hidden')}
+document.getElementById('btn-settings').onclick=openSettings;document.getElementById('btn-pause-settings').onclick=openSettings;
+document.getElementById('opt-music').oninput=e=>{settings.music=Number(e.target.value);AudioEngine.setVolumes(settings.music,settings.sfx);SaveSystem.saveSettings(settings)};
+document.getElementById('opt-sfx').oninput=e=>{settings.sfx=Number(e.target.value);AudioEngine.setVolumes(settings.music,settings.sfx);SaveSystem.saveSettings(settings)};
+document.getElementById('opt-touch').onchange=e=>{settings.touch=e.target.value;SaveSystem.saveSettings(settings);updateTouchVisibility()};
+document.getElementById('opt-quality').onchange=e=>{settings.quality=e.target.value;SaveSystem.saveSettings(settings);window.GAME_QUALITY=settings.quality};
+document.querySelectorAll('.back-btn').forEach(btn=>{btn.onclick=()=>document.getElementById(btn.getAttribute('data-close')).classList.add('hidden')});
+document.getElementById('btn-inventory').onclick=openInventory;
+document.getElementById('btn-close-inv').onclick=()=>{document.getElementById('inventory-modal').classList.add('hidden');gameState='PLAYING';updateTouchVisibility()};
+document.getElementById('btn-close-puzzle').onclick=()=>{PuzzleSystem.close();gameState='PLAYING';updateTouchVisibility()};
+document.getElementById('btn-pause').onclick=()=>{gameState='PAUSED';updateTouchVisibility();document.getElementById('pause-menu').classList.remove('hidden')};
+document.getElementById('btn-resume').onclick=()=>{document.getElementById('pause-menu').classList.add('hidden');gameState='PLAYING';updateTouchVisibility()};
+document.getElementById('btn-restart-cp').onclick=()=>{const s=SaveSystem.loadGame();if(s)startChapter(s.chapter,true);else startChapter(currentChapterIdx,false)};
+document.getElementById('btn-retry').onclick=()=>{const s=SaveSystem.loadGame();if(s)startChapter(s.chapter,true);else startChapter(currentChapterIdx,false)};
+document.getElementById('btn-next-chapter').onclick=()=>startChapter(currentChapterIdx+1,true);
+function returnToMainMenu(){hideAllScreens();document.getElementById('hud').classList.add('hidden');document.getElementById('glitch-overlay').style.opacity=0;gameState='MENU';updateTouchVisibility();updateContinueButton();document.getElementById('main-menu').classList.remove('hidden')}
+document.getElementById('btn-quit-menu').onclick=returnToMainMenu;document.getElementById('btn-death-menu').onclick=returnToMainMenu;document.getElementById('btn-ending-menu').onclick=returnToMainMenu;
+document.getElementById('lang-ar').onclick=()=>applyLanguage('ar');document.getElementById('lang-en').onclick=()=>applyLanguage('en');
+applyLanguage(settings.lang);updateContinueButton();requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,78 @@
+name: Build Android APK
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Cordova & ImageMagick
+        run: |
+          npm install -g cordova
+          sudo apt-get update && sudo apt-get install -y imagemagick
+
+      - name: Create Cordova Android Project
+        run: |
+          cordova create game-app com.nightmare.forgottenhouse "Nightmare"
+          cd game-app
+          cordova platform add android
+          rm -rf www/*
+
+      - name: Copy Game HTML & Prepare App Icon
+        run: |
+          if [ -f "index.html" ]; then
+            cp index.html game-app/www/index.html
+          else
+            HTML_FILE=$(find . -maxdepth 1 -type f -iname "*.html" | head -n 1)
+            if [ -n "$HTML_FILE" ]; then
+              cp "$HTML_FILE" game-app/www/index.html
+            else
+              echo "No HTML file found!" && exit 1
+            fi
+          fi
+
+          IMG_FILE=$(find . -maxdepth 1 -type f \( -iname "*.png" -o -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.webp" \) | head -n 1)
+          if [ -n "$IMG_FILE" ]; then
+            convert "$IMG_FILE" -resize 512x512! game-app/www/icon.png
+          fi
+
+      - name: Configure config.xml
+        run: |
+          cd game-app
+          if [ -f "www/icon.png" ]; then
+            sed -i '/<\/widget>/i <icon src="www\/icon.png" />' config.xml
+          fi
+          sed -i '/<\/widget>/i <preference name="Orientation" value="landscape" />' config.xml
+          sed -i '/<\/widget>/i <preference name="Fullscreen" value="true" />' config.xml
+
+      - name: Build Debug APK
+        run: |
+          cd game-app
+          cordova build android --debug
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Nightmare-APK
+          path: game-app/platforms/android/app/build/outputs/apk/debug/app-debug.apk
